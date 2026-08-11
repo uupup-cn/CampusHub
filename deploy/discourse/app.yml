@@ -1,0 +1,42 @@
+templates:
+  - templates/postgres.template.yml
+  - templates/redis.template.yml
+  - templates/web.template.yml
+
+expose:
+  - "9800:80"
+
+params:
+  db_default_text_search_config: "simple"
+  db_shared_buffers: "256MB"
+  db_work_mem: "40MB"
+  version: tests-passed
+
+env:
+  LANG: en_US.UTF-8
+  UNICORN_WORKERS: 2
+  DISCOURSE_HOSTNAME: "112.213.106.104"
+  DISCOURSE_DEVELOPER_KEY: "chb-dev-2026"
+  DISCOURSE_SMTP_ADDRESS: "smtp.example.com"
+  DISCOURSE_SMTP_PORT: 587
+  DISCOURSE_SMTP_USER_NAME: "noreply@example.com"
+  DISCOURSE_SMTP_PASSWORD: "change-me"
+  DISCOURSE_NOTIFICATION_EMAIL: "noreply@example.com"
+
+volumes:
+  - volume:
+      host: /opt/campushub/chb-reward-plugin
+      guest: /var/www/discourse/plugins/chb-reward-plugin
+  - volume:
+      host: /var/discourse/shared
+      guest: /shared
+  - volume:
+      host: /var/discourse/shared/uploads
+      guest: /var/www/discourse/public/uploads
+
+hooks:
+  after_assets_precompile:
+    - exec:
+        cd: /var/www/discourse/plugins/chb-reward-plugin
+        cmd:
+          - echo "CHB reward plugin loaded"
