@@ -2,21 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Store, LayoutDashboard, ShieldCheck, Sparkles } from 'lucide-react';
-import { useState } from 'react';
-import { getUserID, setUserID } from '@/lib/api';
+import { Store, LayoutDashboard, ShieldCheck, Sparkles, MessageSquare, LogIn } from 'lucide-react';
+
+const FORUM_URL = process.env.NEXT_PUBLIC_FORUM_URL || 'http://112.213.106.104:9800';
 
 export default function Navbar() {
   const pathname = usePathname();
-  const [userId, setUserIdState] = useState(getUserID());
   const isAdmin = pathname?.startsWith('/admin');
-
-  const switchUser = () => {
-    const next = userId === 1 ? 2 : userId === 2 ? 1 : 2;
-    setUserID(next);
-    setUserIdState(next);
-    window.location.reload();
-  };
 
   const links = isAdmin
     ? [
@@ -48,13 +40,23 @@ export default function Navbar() {
               <Link
                 key={l.href}
                 href={l.href}
-                className={`nav-link flex items-center gap-1.5 ${active ? '!text-white' : ''}`}
+                className={'nav-link flex items-center gap-1.5 ' + (active ? '!text-white' : '')}
               >
                 <Icon size={15} />
                 {l.label}
               </Link>
             );
           })}
+
+          <a
+            href={FORUM_URL}
+            className="nav-link flex items-center gap-1.5"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <MessageSquare size={15} />
+            论坛
+          </a>
 
           {isAdmin && (
             <Link href="/marketplace" className="nav-link flex items-center gap-1.5">
@@ -64,14 +66,12 @@ export default function Navbar() {
           )}
 
           <button
-            onClick={switchUser}
+            onClick={() => { window.location.href = FORUM_URL + '/login'; }}
             className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 text-xs text-gray-400 hover:text-white hover:border-white/25 transition-all"
-            title="切换模拟用户（开发环境）"
+            title="登录论坛账号"
           >
-            <span className="w-5 h-5 rounded-full bg-gradient-to-br from-violet-500 to-cyan-400 flex items-center justify-center text-[10px] font-bold text-white">
-              U{userId}
-            </span>
-            {userId === 1 ? '用户 U1' : '用户 U2'}
+            <LogIn size={14} className="text-violet-400" />
+            登录
           </button>
         </div>
       </div>
