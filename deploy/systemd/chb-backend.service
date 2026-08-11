@@ -1,0 +1,16 @@
+[Unit]
+Description=CampusHub Backend (Go)
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/campushub
+ExecStart=/opt/campushub/chb-backend deploy/config.prod.yaml
+Restart=always
+RestartSec=5
+Environment=GIN_MODE=release
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
