@@ -1,4 +1,4 @@
-﻿package repository
+package repository
 
 import (
 	"time"
@@ -6,7 +6,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// RewardRule - 奖励规则配置
 type RewardRule struct {
 	ID              int64     `json:"id"`
 	Action          string    `json:"action"`
@@ -19,7 +18,6 @@ type RewardRule struct {
 	UpdatedAt       time.Time `json:"updated_at"`
 }
 
-// TrustLevelCap - 等级日上限
 type TrustLevelCapModel struct {
 	ID               int64     `json:"id"`
 	TrustLevel       int16     `json:"trust_level"`
@@ -33,7 +31,6 @@ func (TrustLevelCapModel) TableName() string {
 	return "trust_level_caps"
 }
 
-// DailyRewardQuota - 用户每日配额
 type DailyRewardQuotaModel struct {
 	ID              int64     `json:"id"`
 	DiscourseUserID int64     `json:"discourse_user_id"`
@@ -48,7 +45,6 @@ func (DailyRewardQuotaModel) TableName() string {
 	return "daily_reward_quotas"
 }
 
-// RewardLog - 奖励发放日志
 type RewardLogRecord struct {
 	ID              int64     `json:"id"`
 	DiscourseUserID int64     `json:"discourse_user_id"`
@@ -95,10 +91,10 @@ func (r *RewardRepo) ListRules() ([]RewardRule, error) {
 
 func (r *RewardRepo) UpdateRule(rule *RewardRule) error {
 	return r.db.Model(&RewardRule{}).Where("action = ?", rule.Action).Updates(map[string]interface{}{
-		"amount":           rule.Amount,
-		"cooldown_seconds": rule.CooldownSeconds,
+		"amount":             rule.Amount,
+		"cooldown_seconds":   rule.CooldownSeconds,
 		"daily_cap_per_user": rule.DailyCapPerUser,
-		"is_active":        rule.IsActive,
+		"is_active":          rule.IsActive,
 	}).Error
 }
 
@@ -121,8 +117,8 @@ func (r *RewardRepo) ListCaps() ([]TrustLevelCapModel, error) {
 
 func (r *RewardRepo) UpdateCap(cap *TrustLevelCapModel) error {
 	return r.db.Model(&TrustLevelCapModel{}).Where("trust_level = ?", cap.TrustLevel).Updates(map[string]interface{}{
-		"daily_cap":          cap.DailyCap,
-		"reward_multiplier":  cap.RewardMultiplier,
+		"daily_cap":         cap.DailyCap,
+		"reward_multiplier": cap.RewardMultiplier,
 	}).Error
 }
 
@@ -137,13 +133,25 @@ func (r *RewardRepo) GetQuota(userID int64, date string) (*DailyRewardQuotaModel
 	return &q, nil
 }
 
+// GetQuotaForUpdate reads quota with row-level lock for use inside transactions
+func (r *RewardRepo) GetQuotaForUpdate(tx *gorm.DB, userID int64, date string) (*DailyRewardQuotaModel, error) {
+	var q DailyRewardQuotaModel
+	err := tx.Set("gorm:query_option", "FOR UPDATE").Where("discourse_user_id = ? AND reward_date = ?", userID, date).First(&q).Error
+	if err != nil {
+		return nil, err
+	}
+	return &q, nil
+}
+
+// UpsertQuota creates or updates the daily quota
 func (r *RewardRepo) UpsertQuota(tx *gorm.DB, userID int64, date string, earnedToday int64, actionCounts string) error {
-	result := tx.Exec(`
-		INSERT INTO daily_reward_quotas (discourse_user_id, reward_date, earned_today, action_counts, created_at, updated_at)
-		VALUES (?, ?, ?, ?, NOW(), NOW())
-		ON CONFLICT (discourse_user_id, reward_date) DO UPDATE SET
-			earned_today = ?, action_counts = ?, updated_at = NOW()
-	`, userID, date, earnedToday, actionCounts, earnedToday, actionCounts)
+	sql := "INSERT INTO daily_reward_quotas (discourse_user_id, reward_date, earned_today, action_counts, created_at, updated_at) " +
+		"VALUES (?, ?, ?, ?, NOW(), NOW()) " +
+		"ON CONFLICT (discourse_user_id, reward_date) DO UPDATE SET " +
+		"earned_today = ?, action_counts = ?, updated_at = NOW()"
+	result := tx.Exec(sql,
+		userID, date, earnedToday, actionCounts,
+		earnedToday, actionCounts)
 	return result.Error
 }
 
