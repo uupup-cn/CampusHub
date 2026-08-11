@@ -75,7 +75,7 @@ export default function Home() {
           transition={{ duration: 0.8 }}
         >
           <motion.div
-            className="flex items-center gap-2 mb-8"
+            className="flex items-center justify-center gap-2 mb-8"
             initial={reduce ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease }}
@@ -86,7 +86,7 @@ export default function Home() {
             </span>
           </motion.div>
 
-          <h1 className="display-title !text-[clamp(3rem,9vw,8rem)] mb-8">
+          <h1 className="display-title !text-[clamp(3rem,9vw,8rem)] mb-8 text-center">
             {heroWords.map((w, i) => (
               <motion.span
                 key={w}
@@ -101,7 +101,7 @@ export default function Home() {
           </h1>
 
           <motion.p
-            className="text-gray-400 max-w-2xl text-lg leading-relaxed mb-12"
+            className="text-gray-400 max-w-2xl text-lg leading-relaxed mb-12 mx-auto text-center"
             initial={reduce ? false : { opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.85, ease }}
@@ -111,7 +111,7 @@ export default function Home() {
           </motion.p>
 
           <motion.div
-            className="flex flex-wrap gap-4 mb-16"
+            className="flex flex-wrap justify-center gap-4 mb-16"
             initial={reduce ? false : { opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 1.05, ease }}
@@ -129,7 +129,7 @@ export default function Home() {
 
           {/* Live stats strip */}
           <motion.div
-            className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl"
+            className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl mx-auto"
             initial={reduce ? false : { opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 1.25, ease }}
