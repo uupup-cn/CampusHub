@@ -1,4 +1,4 @@
-﻿module ChbApiClient
+module ChbApiClient
   class Client
     def initialize
       @base_url = SiteSetting.chb_backend_api_url

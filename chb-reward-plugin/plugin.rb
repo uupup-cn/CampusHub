@@ -1,4 +1,4 @@
-﻿# name: chb_reward_plugin
+# name: chb_reward_plugin
 # about: 监听 Discourse 事件，转发到 CampusHub 后端奖励引擎
 # version: 1.0.0
 # authors: CampusHub Team
@@ -6,14 +6,13 @@
 
 enabled_site_setting :chb_reward_plugin_enabled
 
-register_asset "javascripts/chb_checkin.js"
 register_asset "stylesheets/chb_checkin.css"
 
 after_initialize do
-  require_dependency "chb_event_handler"
-  require_dependency "chb_api_client"
-  require_dependency "chb_event_serializer"
-  require_dependency "chb_trust_level_sync"
+  require_relative "lib/chb_event_handler"
+  require_relative "lib/chb_api_client"
+  require_relative "lib/chb_event_serializer"
+  require_relative "lib/chb_trust_level_sync"
 
   handler = ChbEventHandler.new
 

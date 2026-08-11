@@ -1,4 +1,4 @@
-﻿module ChbEventSerializer
+module ChbEventSerializer
   def self.serialize_topic(topic, user)
     {
       action: "post",

@@ -1,4 +1,4 @@
-﻿class ChbTrustLevelSync
+class ChbTrustLevelSync
   def self.sync_all_users
     client = ChbApiClient::Client.new
     User.human_users.find_each do |user|
