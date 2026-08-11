@@ -1,9 +1,9 @@
-﻿plugins:
+plugins:
   chb_reward_plugin_enabled:
     default: true
     client: true
   chb_backend_api_url:
-    default: "http://localhost:8080"
+    default: "http://localhost:9090"
     client: false
   chb_backend_api_key:
     default: ""

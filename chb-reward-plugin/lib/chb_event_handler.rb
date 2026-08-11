@@ -1,4 +1,4 @@
-﻿class ChbEventHandler
+class ChbEventHandler
   def initialize
     @client = ChbApiClient::Client.new
   end
