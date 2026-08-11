@@ -19,8 +19,8 @@ const (
 	ContextKeyClientID   = "client_id"
 )
 
-// BearerAuth validates a Bearer token against the database and injects user info into context.
-// Use this for routes that REQUIRE OAuth authentication (third-party apps).
+// BearerAuth validates a Bearer token against the database.
+// Use for routes that REQUIRE OAuth authentication.
 func BearerAuth(appRepo *repository.AppRepo) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		auth := c.GetHeader("Authorization")
@@ -30,21 +30,17 @@ func BearerAuth(appRepo *repository.AppRepo) gin.HandlerFunc {
 			return
 		}
 		token := strings.TrimPrefix(auth, "Bearer ")
-
 		at, err := appRepo.GetAccessToken(token)
 		if err != nil {
 			response.Error(c, errcode.ErrTokenInvalid)
 			c.Abort()
 			return
 		}
-
 		if at.AccessExpiresAt.Before(time.Now()) {
 			response.Error(c, errcode.ErrTokenExpired)
 			c.Abort()
 			return
 		}
-
-		// Inject user info into context
 		c.Set(ContextKeyUserID, at.DiscourseUserID)
 		c.Set(ContextKeyClientID, at.ClientID)
 		c.Set(ContextKeyScopes, scopesFromJSON(at.Scopes))
@@ -53,22 +49,30 @@ func BearerAuth(appRepo *repository.AppRepo) gin.HandlerFunc {
 }
 
 // OptionalAuth tries Bearer token first, then falls back to X-User-ID header.
-// Use this for routes that serve both OAuth apps and internal/plugin calls.
+// If Authorization header is present but token is invalid, returns 401 (does NOT fall back).
 func OptionalAuth(appRepo *repository.AppRepo) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		auth := c.GetHeader("Authorization")
 		if auth != "" && strings.HasPrefix(auth, "Bearer ") {
 			token := strings.TrimPrefix(auth, "Bearer ")
 			at, err := appRepo.GetAccessToken(token)
-			if err == nil && at.AccessExpiresAt.After(time.Now()) {
-				c.Set(ContextKeyUserID, at.DiscourseUserID)
-				c.Set(ContextKeyClientID, at.ClientID)
-				c.Set(ContextKeyScopes, scopesFromJSON(at.Scopes))
-				c.Next()
+			if err != nil {
+				response.Error(c, errcode.ErrTokenInvalid)
+				c.Abort()
 				return
 			}
+			if at.AccessExpiresAt.Before(time.Now()) {
+				response.Error(c, errcode.ErrTokenExpired)
+				c.Abort()
+				return
+			}
+			c.Set(ContextKeyUserID, at.DiscourseUserID)
+			c.Set(ContextKeyClientID, at.ClientID)
+			c.Set(ContextKeyScopes, scopesFromJSON(at.Scopes))
+			c.Next()
+			return
 		}
-		// Fall back to X-User-ID header (internal/plugin/testing)
+		// No Authorization header - fall back to X-User-ID (internal/plugin)
 		userIDStr := c.GetHeader("X-User-ID")
 		if userIDStr != "" {
 			c.Set(ContextKeyUserID, parseUserID(userIDStr))
@@ -77,15 +81,15 @@ func OptionalAuth(appRepo *repository.AppRepo) gin.HandlerFunc {
 	}
 }
 
-// RequireScope checks that the authenticated user has the required scope.
+// RequireScope checks that the OAuth token has the required scope.
+// Internal calls (X-User-ID) bypass scope checks.
 func RequireScope(scope string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		scopes, exists := c.Get(ContextKeyScopes)
-		if !exists {
-			// Internal call via X-User-ID, no scope restriction
+		if _, exists := c.Get(ContextKeyClientID); !exists {
 			c.Next()
 			return
 		}
+		scopes, _ := c.Get(ContextKeyScopes)
 		scopesStr := scopes.(string)
 		if scopesStr == "" || !strings.Contains(scopesStr, scope) {
 			response.Error(c, errcode.ErrScopeInsufficient)
@@ -96,7 +100,6 @@ func RequireScope(scope string) gin.HandlerFunc {
 	}
 }
 
-// APIKeyAuth validates the X-API-Key header (internal plugin calls).
 func APIKeyAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key := c.GetHeader("X-API-Key")
@@ -110,7 +113,6 @@ func APIKeyAuth() gin.HandlerFunc {
 	}
 }
 
-// AdminAuth validates the X-Admin-Key header.
 func AdminAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key := c.GetHeader("X-Admin-Key")
@@ -127,8 +129,8 @@ func AdminAuth() gin.HandlerFunc {
 func parseUserID(s string) int64 {
 	var id int64
 	_, err := fmt.Sscanf(s, "%d", &id)
-		_ = err
-		return id
+	_ = err
+	return id
 }
 
 func scopesFromJSON(scopeJSON string) string {
