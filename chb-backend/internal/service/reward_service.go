@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -52,6 +53,7 @@ type RewardResponse struct {
 	Multiplier   float64 `json:"multiplier"`
 	FinalAmount  int64   `json:"final_amount"`
 	EarnedToday  int64   `json:"earned_today"`
+	ActionEarned int64   `json:"action_earned"`
 	DailyCap     int64   `json:"daily_cap"`
 	Status       string  `json:"status"`
 	RejectReason string  `json:"reject_reason,omitempty"`
@@ -120,35 +122,49 @@ func (s *RewardService) Grant(req *RewardRequest) (*RewardResponse, error) {
 			return errcode.ErrDatabase
 		}
 
-		// 7. Get today quota
+		// 7. Get today quota with row lock
 		today := time.Now().Format("2006-01-02")
-		quota, err := s.rewardRepo.GetQuota(req.DiscourseUserID, today)
-		earnedToday := int64(0)
-		if err == nil {
-			earnedToday = quota.EarnedToday
+		quota, err := s.rewardRepo.GetQuotaForUpdate(tx, req.DiscourseUserID, today)
+		totalEarnedToday := int64(0)
+		actionEarnedMap := map[string]int64{}
+		if err == nil && quota != nil {
+			totalEarnedToday = quota.EarnedToday
+			if quota.ActionCounts != "" {
+				_ = json.Unmarshal([]byte(quota.ActionCounts), &actionEarnedMap)
+			}
 		}
 
-		// 8. Check daily caps
-		userDailyCap := rule.DailyCapPerUser
-		if userDailyCap > cap.DailyCap {
-			userDailyCap = cap.DailyCap
-		}
-		if earnedToday >= userDailyCap {
-			return &RejectError{Reason: "user_daily_cap_reached"}
+		// 8. Check per-action daily cap
+		actionEarned := actionEarnedMap[req.Action]
+		actionCap := rule.DailyCapPerUser
+		if actionEarned >= actionCap {
+			return &RejectError{Reason: "action_daily_cap_reached"}
 		}
 
-		// 9. Calculate reward
+		// 9. Check total daily cap (trust level cap)
+		totalCap := cap.DailyCap
+		if totalEarnedToday >= totalCap {
+			return &RejectError{Reason: "total_daily_cap_reached"}
+		}
+
+		// 10. Calculate reward
 		baseAmount := rule.Amount
 		multiplier := cap.RewardMultiplier
 		finalAmount := int64(float64(baseAmount) * multiplier)
 
-		// 10. Ensure not exceeding daily cap
-		remaining := userDailyCap - earnedToday
-		if finalAmount > remaining {
-			finalAmount = remaining
+		// 11. Ensure not exceeding per-action remaining
+		actionRemaining := actionCap - actionEarned
+		if finalAmount > actionRemaining {
+			finalAmount = actionRemaining
 		}
 
-		// 11. Check public pool balance
+		// 12. Ensure not exceeding total remaining
+		totalRemaining := totalCap - totalEarnedToday
+		if finalAmount > totalRemaining {
+			finalAmount = totalRemaining
+		}
+
+		// 13. Check public pool balance
 		publicPool, err := s.poolRepo.GetPublicPoolWithLock(tx)
 		if err != nil {
 			return errcode.ErrDatabase
@@ -157,24 +173,26 @@ func (s *RewardService) Grant(req *RewardRequest) (*RewardResponse, error) {
 			return errcode.ErrPoolInsufficient
 		}
 
-		// 12. Deduct from public pool
+		// 14. Deduct from public pool
 		if err := s.poolRepo.UpdateBalance(publicPool.ID, publicPool.Balance-finalAmount); err != nil {
 			return errcode.ErrDatabase
 		}
 
-		// 13. Add to user balance
+		// 15. Add to user balance
 		newBalance := ub.Balance + finalAmount
 		if err := s.balanceRepo.UpdateBalanceAndEarned(tx, req.DiscourseUserID, newBalance, ub.Version+1, ub.TotalEarned+finalAmount); err != nil {
 			return err
 		}
 
-		// 14. Update daily quota
-		newEarned := earnedToday + finalAmount
-		if err := s.rewardRepo.UpsertQuota(tx, req.DiscourseUserID, today, newEarned, fmt.Sprintf("{\"%s\":1}", req.Action)); err != nil {
+		// 16. Update daily quota
+		newTotalEarned := totalEarnedToday + finalAmount
+		actionEarnedMap[req.Action] = actionEarned + finalAmount
+		actionCountsJSON, _ := json.Marshal(actionEarnedMap)
+		if err := s.rewardRepo.UpsertQuota(tx, req.DiscourseUserID, today, newTotalEarned, string(actionCountsJSON)); err != nil {
 			return errcode.ErrDatabase
 		}
 
-		// 15. Write transaction
+		// 17. Write transaction
 		txModel := &repository.Transaction{
 			TxType:          "reward",
 			DiscourseUserID: req.DiscourseUserID,
@@ -192,7 +210,7 @@ func (s *RewardService) Grant(req *RewardRequest) (*RewardResponse, error) {
 			return errcode.ErrDatabase
 		}
 
-		// 16. Write reward log
+		// 18. Write reward log
 		rewardLog := &repository.RewardLogRecord{
 			DiscourseUserID: req.DiscourseUserID,
 			Action:          req.Action,
@@ -203,7 +221,7 @@ func (s *RewardService) Grant(req *RewardRequest) (*RewardResponse, error) {
 			Multiplier:      multiplier,
 			Status:          "completed",
 		}
-		if req.IPAddress != "" {
+		if req.IPAddress != " + dq + dq + " {
 			rewardLog.IPAddress = &req.IPAddress
 		}
 		if err := s.rewardRepo.CreateLog(tx, rewardLog); err != nil {
@@ -211,13 +229,14 @@ func (s *RewardService) Grant(req *RewardRequest) (*RewardResponse, error) {
 		}
 
 		resp = &RewardResponse{
-			Amount:      baseAmount,
-			TrustLevel:  ub.TrustLevel,
-			Multiplier:  multiplier,
-			FinalAmount: finalAmount,
-			EarnedToday: newEarned,
-			DailyCap:    userDailyCap,
-			Status:      "completed",
+			Amount:       baseAmount,
+			TrustLevel:   ub.TrustLevel,
+			Multiplier:   multiplier,
+			FinalAmount:  finalAmount,
+			EarnedToday:  newTotalEarned,
+			ActionEarned: actionEarned + finalAmount,
+			DailyCap:     actionCap,
+			Status:       "completed",
 		}
 		return nil
 })
@@ -254,15 +273,11 @@ func (s *RewardService) CheckinWithTrustLevel(userID int64, trustLevel int16, ip
 	idempotencyKey := fmt.Sprintf("checkin_%d_%s", userID, today)
 
 	// Check if already checked in today
-	quota, err := s.rewardRepo.GetQuota(userID, today)
-	if err == nil {
-		existingLog, _ := s.rewardRepo.GetLogByRef("checkin", userID, userID)
-		if existingLog != nil {
-			if existingLog.CreatedAt.Format("2006-01-02") == today {
-				return &RewardResponse{Status: "rejected", RejectReason: "already_checked_in"}, nil
-			}
+	existingLog, _ := s.rewardRepo.GetLogByRef("checkin", userID, userID)
+	if existingLog != nil {
+		if existingLog.CreatedAt.Format("2006-01-02") == today {
+			return &RewardResponse{Status: "rejected", RejectReason: "already_checked_in"}, nil
 		}
-		_ = quota
 	}
 
 	return s.Grant(&RewardRequest{
@@ -283,8 +298,14 @@ func (s *RewardService) CheckinStatus(userID int64) (map[string]interface{}, err
 	streak := int64(0)
 
 	quota, err := s.rewardRepo.GetQuota(userID, today)
-	if err == nil && quota.EarnedToday > 0 {
-		checkedIn = true
+	if err == nil && quota != nil {
+		actionMap := map[string]int64{}
+		if quota.ActionCounts != " + dq + dq + " {
+			_ = json.Unmarshal([]byte(quota.ActionCounts), &actionMap)
+		}
+		if actionMap["checkin"] > 0 {
+			checkedIn = true
+		}
 	}
 
 	return map[string]interface{}{
@@ -304,7 +325,6 @@ func (s *RewardService) SyncTrustLevel(discourseUserID int64, trustLevel int16) 
 	oldLevel := int16(0)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			// Create new user balance with trust level
 			ub = &repository.UserBalance{
 				DiscourseUserID: discourseUserID,
 				Username:        fmt.Sprintf("user_%d", discourseUserID),
