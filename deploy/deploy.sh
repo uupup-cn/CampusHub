@@ -38,14 +38,15 @@ else
 fi
 
 echo "=== Database ==="
-docker exec chb-postgres psql -U chb -c "CREATE DATABASE chb_platform;" 2>/dev/null || true
+docker exec chb-postgres psql -U chb -d chb_test -c "CREATE DATABASE chb_platform;" 2>/dev/null || true
 
 echo "=== Migrations ==="
 cd $DEPLOY_DIR/chb-backend
 go run ./cmd/migrate $DEPLOY_DIR/deploy/config.prod.yaml
 
 echo "=== Build Backend ==="
-go build -o $DEPLOY_DIR/chb-backend ./cmd/server
+mkdir -p /opt/campushub/bin
+go build -o /opt/campushub/bin/chb-backend ./cmd/server
 
 echo "=== Build Frontend ==="
 cd $DEPLOY_DIR/chb-frontend

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"sort"
 
 	"github.com/campushub/chb-backend/internal/config"
 	"github.com/campushub/chb-backend/internal/repository"
@@ -27,15 +29,25 @@ func main() {
 		log.Fatalf("Failed to connect database: %v", err)
 	}
 
+	// Execute migration SQL files
 	migrationDir := "migrations"
-	entries, err := os.ReadDir(migrationDir)
+	pattern := filepath.Join(migrationDir, "*.up.sql")
+	files, err := filepath.Glob(pattern)
 	if err != nil {
-		log.Fatalf("Failed to read migrations dir: %v", err)
+		log.Fatalf("Failed to glob migration files: %v", err)
 	}
+	sort.Strings(files)
 
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			fmt.Printf("Found migration file: %s\n", entry.Name())
+	for _, f := range files {
+		sqlBytes, err := os.ReadFile(f)
+		if err != nil {
+			log.Printf("Failed to read %s: %v", f, err)
+			continue
+		}
+		if err := db.Exec(string(sqlBytes)).Error; err != nil {
+			log.Printf("Migration %s: %v (may be already applied)", filepath.Base(f), err)
+		} else {
+			log.Printf("Migration %s: OK", filepath.Base(f))
 		}
 	}
 
@@ -44,7 +56,6 @@ func main() {
 }
 
 func seed(db *gorm.DB) {
-	// Pools
 	var count int64
 	db.Table("pools").Count(&count)
 	if count == 0 {
@@ -53,7 +64,6 @@ func seed(db *gorm.DB) {
 		log.Println("Seeded: pools")
 	}
 
-	// Reward rules
 	db.Table("reward_rules").Count(&count)
 	if count == 0 {
 		rewardRepo := repository.NewRewardRepo(db)
@@ -61,7 +71,6 @@ func seed(db *gorm.DB) {
 		log.Println("Seeded: reward rules")
 	}
 
-	// Trust level caps
 	db.Table("trust_level_caps").Count(&count)
 	if count == 0 {
 		rewardRepo := repository.NewRewardRepo(db)
