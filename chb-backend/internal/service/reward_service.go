@@ -170,7 +170,7 @@ func (s *RewardService) Grant(req *RewardRequest) (*RewardResponse, error) {
 
 		// 14. Update daily quota
 		newEarned := earnedToday + finalAmount
-		if err := s.rewardRepo.UpsertQuota(tx, req.DiscourseUserID, today, newEarned, fmt.Sprintf("{"%s":1}", req.Action)); err != nil {
+		if err := s.rewardRepo.UpsertQuota(tx, req.DiscourseUserID, today, newEarned, fmt.Sprintf("{\"%s\":1}", req.Action)); err != nil {
 			return errcode.ErrDatabase
 		}
 
