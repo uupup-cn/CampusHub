@@ -43,7 +43,20 @@ func (h *LedgerHandler) Spend(c *gin.Context) {
 	}
 
 	userID := getUserID(c)
-	result, err := h.svc.Spend(userID, req.Amount, req.IdempotencyKey, req.Description, 10.0, nil)
+
+	// Extract client_id from context (set by BearerAuth middleware)
+	// If no client_id, use default fee rate (internal call)
+	feeRate := 10.0
+	var boundUserID *int64
+	if clientID, exists := c.Get("client_id"); exists {
+		if cid, ok := clientID.(string); ok && cid != "" {
+			// OAuth app call - in production, look up app fee_rate from DB
+			// For now, use the default 10% fee rate
+			_ = cid
+		}
+	}
+
+	result, err := h.svc.Spend(userID, req.Amount, req.IdempotencyKey, req.Description, feeRate, boundUserID)
 	if err != nil {
 		if ec, ok := err.(errcode.ErrorCode); ok {
 			response.Error(c, ec)
@@ -138,7 +151,6 @@ func getUserID(c *gin.Context) int64 {
 	return 0
 }
 
-// getTrustLevel 读取当前用户信任等级：优先取中间件注入值，其次取 X-Trust-Level 请求头（开发/测试环境）。
 func getTrustLevel(c *gin.Context) int16 {
 	if v, exists := c.Get("trust_level"); exists {
 		if tl, ok := v.(int16); ok {

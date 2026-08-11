@@ -53,23 +53,31 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *gin.Engine {
 
 	api := r.Group("/api")
 	{
+		// CHB API - dual auth: Bearer token (OAuth) or X-User-ID (internal)
 		chb := api.Group("/chb")
+		chb.Use(middleware.OptionalAuth(appRepo))
 		{
+			// Read operations - need "read" scope for OAuth
 			chb.GET("/balance", ledger.GetBalance)
-			chb.POST("/spend", ledger.Spend)
 			chb.GET("/transactions", ledger.ListTransactions)
+			chb.GET("/checkin/status", reward.CheckinStatus)
 			chb.GET("/pools", ledger.GetPools)
-			chb.POST("/release", ledger.Release)
 			chb.GET("/audit", ledger.Audit)
 
-			chb.POST("/reward", reward.GrantReward)
+			// Write operations - need "spend" scope for OAuth
+			chb.POST("/spend", ledger.Spend)
 			chb.POST("/checkin", reward.Checkin)
-			chb.GET("/checkin/status", reward.CheckinStatus)
+
+			// Internal-only routes (plugin calls with X-API-Key)
+			chb.POST("/reward", reward.GrantReward)
 			chb.POST("/sync/trust-level", reward.SyncTrustLevel)
 			chb.GET("/reward/rules", reward.ListRewardRules)
+			chb.POST("/release", ledger.Release)
 		}
 
+		// Marketplace - dual auth
 		marketplace := api.Group("/marketplace")
+		marketplace.Use(middleware.OptionalAuth(appRepo))
 		{
 			marketplace.GET("/items", market.ListItems)
 			marketplace.GET("/items/mine", market.ListMyItems)
@@ -80,7 +88,9 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			marketplace.POST("/apply", market.ApplyMerchant)
 		}
 
+		// Admin API - X-Admin-Key
 		adminAPI := api.Group("/admin")
+		adminAPI.Use(middleware.AdminAuth())
 		{
 			adminAPI.GET("/settings", admin.GetSettings)
 			adminAPI.PUT("/settings", admin.UpdateSettings)
@@ -109,6 +119,7 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			adminAPI.GET("/stats", admin.GetStats)
 		}
 
+		// OAuth API
 		oauthAPI := api.Group("/oauth")
 		{
 			oauthAPI.GET("/app-info", oauth.AppInfo)
