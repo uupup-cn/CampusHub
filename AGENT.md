@@ -200,6 +200,7 @@ graph TB
 | Next.js | npm run dev / npm run build | 本地开发 / 生产构建 |
 | 数据库迁移 | go run ./cmd/migrate | 应用迁移 + 种子数据 |
 | Discourse 插件 | ./launcher rebuild app | 容器内部署插件 |
+| CI | GitHub Actions (.github/workflows/ci.yml) | push/PR 自动执行：后端 go vet + build + 集成测试（PostgreSQL 服务容器）、前端 lint + 生产构建、插件 Ruby 语法检查 |
 
 ## 10. 开发规则
 
@@ -221,6 +222,7 @@ graph TB
 - 后端覆盖率 >= 80%，积分账本 100%，奖励引擎 >= 90%
 - 集成测试（P13 已完成）：26 个用例覆盖账本(7)/奖励(4)/集市(4)/OAuth2(4)/管理后台(4)/响应格式与错误码(3)
 - 集成测试：OAuth2 全链路、100 并发扣减、防刷、集市交易
+- CI 自动执行（GitHub Actions）：每次 push/PR 运行后端测试、前端 lint + build、插件语法检查，main 分支保护要求 CI 通过后才可合并
 - 验收：P0/P1 修复；对账平衡；OAuth2 符合 RFC 6749；API P99 < 200ms
 
 ## 13. Discourse 插件

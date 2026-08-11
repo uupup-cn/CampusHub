@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Search, Filter, ArrowUpDown, ShoppingBag, PlusCircle, Package, Sparkles, TrendingUp, Layers } from 'lucide-react';
@@ -32,12 +32,7 @@ export default function MarketplacePage() {
   const [page, setPage] = useState(1);
   const [stats, setStats] = useState({ items: 0, categories: 0, total_chb: 0 });
 
-  useEffect(() => {
-    fetchItems();
-  }, [keyword, category, sort, page]);
-
-  async function fetchItems() {
-    setLoading(true);
+  const fetchItems = useCallback(async () => {
     try {
       const params = new URLSearchParams({ page: String(page), page_size: '12', sort });
       if (keyword) params.set('keyword', keyword);
@@ -51,7 +46,11 @@ export default function MarketplacePage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [keyword, category, sort, page]);
+
+  useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
 
   // Load pool stats
   useEffect(() => {

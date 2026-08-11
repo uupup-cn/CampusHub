@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Search, UserX, UserCheck, RefreshCcw, ShieldAlert, Users } from 'lucide-react';
-import { apiRequest, formatCHB, formatDate, type Paginated } from '@/lib/api';
+import { apiRequest, formatCHB, type Paginated } from '@/lib/api';
 import { useToast } from '@/components/Toast';
 
 interface User {
@@ -24,12 +24,7 @@ export default function AdminUsersPage() {
   const [recoverAmount, setRecoverAmount] = useState<Record<number, string>>({});
   const toast = useToast();
 
-  useEffect(() => {
-    fetchUsers();
-  }, [keyword]);
-
-  async function fetchUsers() {
-    setLoading(true);
+  const fetchUsers = useCallback(async () => {
     try {
       const params = new URLSearchParams({ page: '1', page_size: '50' });
       if (keyword) params.set('keyword', keyword);
@@ -38,7 +33,11 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [keyword]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const freeze = async (id: number) => {
     const res = await apiRequest(`/api/admin/users/${id}/freeze`, { method: 'PUT' });

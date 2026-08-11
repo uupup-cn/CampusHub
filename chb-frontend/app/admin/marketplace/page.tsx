@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   PackageCheck, Store, Check, X, Clock, RefreshCcw,
 } from 'lucide-react';
@@ -36,12 +36,7 @@ export default function AdminMarketplacePage() {
   const [loading, setLoading] = useState(true);
   const toast = useToast();
 
-  useEffect(() => {
-    fetchData();
-  }, [tab]);
-
-  async function fetchData() {
-    setLoading(true);
+  const fetchData = useCallback(async () => {
     try {
       if (tab === 'items') {
         const res = await apiRequest<Paginated<Item>>('/api/admin/marketplace/items?page=1&page_size=50');
@@ -53,7 +48,11 @@ export default function AdminMarketplacePage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [tab]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const reviewItem = async (id: number, status: 'approved' | 'rejected') => {
     const res = await apiRequest(`/api/admin/marketplace/items/${id}`, {

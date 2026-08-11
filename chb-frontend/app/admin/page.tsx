@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
-  Users, Activity, ShoppingBag, Coins, TrendingUp, Wallet,
+  Users, Activity, ShoppingBag, TrendingUp, Wallet,
   Store, Settings, FileText, ArrowUpRight, CircleDollarSign,
   PackageCheck, ShieldAlert, Gauge,
 } from 'lucide-react';
