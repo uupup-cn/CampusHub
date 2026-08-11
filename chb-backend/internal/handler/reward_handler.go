@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"fmt"
+
 	"github.com/campushub/chb-backend/internal/service"
 	"github.com/campushub/chb-backend/pkg/errcode"
 	"github.com/campushub/chb-backend/pkg/response"
@@ -15,7 +17,6 @@ func NewRewardHandler(svc *service.RewardService) *RewardHandler {
 	return &RewardHandler{svc: svc}
 }
 
-// GrantReward - internal API for reward plugin
 func (h *RewardHandler) GrantReward(c *gin.Context) {
 	var req struct {
 		Action          string `json:"action"`
@@ -23,6 +24,7 @@ func (h *RewardHandler) GrantReward(c *gin.Context) {
 		RefType         string `json:"ref_type"`
 		RefID           int64  `json:"ref_id"`
 		IdempotencyKey  string `json:"idempotency_key"`
+		TrustLevel      int16  `json:"trust_level"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, errcode.ErrParamInvalid)
@@ -39,6 +41,7 @@ func (h *RewardHandler) GrantReward(c *gin.Context) {
 		RefType:         req.RefType,
 		RefID:           req.RefID,
 		IdempotencyKey:  req.IdempotencyKey,
+		TrustLevel:      req.TrustLevel,
 		IPAddress:       c.ClientIP(),
 	})
 	if err != nil {
@@ -48,15 +51,25 @@ func (h *RewardHandler) GrantReward(c *gin.Context) {
 	response.Success(c, result)
 }
 
-// Checkin - user daily checkin
 func (h *RewardHandler) Checkin(c *gin.Context) {
-	userID := getUserID(c)
+	var req struct {
+		DiscourseUserID int64 `json:"discourse_user_id"`
+		TrustLevel      int16 `json:"trust_level"`
+	}
+	_ = c.ShouldBindJSON(&req)
+
+	userID := req.DiscourseUserID
+	trustLevel := req.TrustLevel
+	if userID == 0 {
+		userID = getUserID(c)
+		trustLevel = getTrustLevel(c)
+	}
 	if userID == 0 {
 		response.Error(c, errcode.ErrUnauthorized)
 		return
 	}
 
-	result, err := h.svc.Checkin(userID, c.ClientIP())
+	result, err := h.svc.CheckinWithTrustLevel(userID, trustLevel, c.ClientIP())
 	if err != nil {
 		response.Error(c, errcode.ErrInternal)
 		return
@@ -64,9 +77,15 @@ func (h *RewardHandler) Checkin(c *gin.Context) {
 	response.Success(c, result)
 }
 
-// CheckinStatus - query today's checkin status
 func (h *RewardHandler) CheckinStatus(c *gin.Context) {
-	userID := getUserID(c)
+	userIDStr := c.Query("user_id")
+	var userID int64
+	if userIDStr != "" {
+		fmt.Sscanf(userIDStr, "%d", &userID)
+	}
+	if userID == 0 {
+		userID = getUserID(c)
+	}
 	if userID == 0 {
 		response.Error(c, errcode.ErrUnauthorized)
 		return
@@ -80,9 +99,7 @@ func (h *RewardHandler) CheckinStatus(c *gin.Context) {
 	response.Success(c, status)
 }
 
-// ListRewardRules - admin API
 func (h *RewardHandler) ListRewardRules(c *gin.Context) {
-	// TODO: admin auth
 	rules, err := h.svc.ListRewardRules()
 	if err != nil {
 		response.Error(c, errcode.ErrDatabase)
@@ -91,7 +108,6 @@ func (h *RewardHandler) ListRewardRules(c *gin.Context) {
 	response.Success(c, rules)
 }
 
-// SyncTrustLevel - internal API for trust level sync
 func (h *RewardHandler) SyncTrustLevel(c *gin.Context) {
 	var req struct {
 		DiscourseUserID int64 `json:"discourse_user_id"`
@@ -102,9 +118,15 @@ func (h *RewardHandler) SyncTrustLevel(c *gin.Context) {
 		response.Error(c, errcode.ErrParamInvalid)
 		return
 	}
-	// TODO: implement trust level sync logic
-	response.Success(c, gin.H{
-		"old_trust_level": 0,
-		"new_trust_level": req.TrustLevel,
-	})
+	if req.DiscourseUserID == 0 {
+		response.Error(c, errcode.ErrParamMissing)
+		return
+	}
+
+	result, err := h.svc.SyncTrustLevel(req.DiscourseUserID, req.TrustLevel)
+	if err != nil {
+		response.Error(c, errcode.ErrInternal)
+		return
+	}
+	response.Success(c, result)
 }
