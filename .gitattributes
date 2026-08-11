@@ -1,0 +1,10 @@
+# 统一 LF 换行，避免 Windows/Unix 混合仓库的 diff 噪声
+* text=auto eol=lf
+
+# 二进制文件不参与换行转换
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary

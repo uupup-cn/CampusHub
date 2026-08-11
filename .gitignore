@@ -1,0 +1,24 @@
+﻿# Go
+chb-backend/chb-server
+chb-backend/chb-migrate
+*.exe
+*.test
+
+# Node
+node_modules/
+.next/
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
