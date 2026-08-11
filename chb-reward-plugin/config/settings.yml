@@ -3,7 +3,7 @@ plugins:
     default: true
     client: true
   chb_backend_api_url:
-    default: "http://localhost:9090"
+    default: "http://172.17.0.1:9090"
     client: false
   chb_backend_api_key:
     default: ""

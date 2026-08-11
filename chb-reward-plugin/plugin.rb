@@ -1,5 +1,5 @@
 # name: chb_reward_plugin
-# about: 监听 Discourse 事件，转发到 CampusHub 后端奖励引擎
+# about: Monitor Discourse events and forward to CampusHub backend reward engine
 # version: 1.0.0
 # authors: CampusHub Team
 # url: https://github.com/campushub/chb-reward-plugin
@@ -13,30 +13,35 @@ after_initialize do
   require_relative "lib/chb_api_client"
   require_relative "lib/chb_event_serializer"
   require_relative "lib/chb_trust_level_sync"
+  require_relative "app/controllers/chb_checkin_controller"
 
   handler = ChbEventHandler.new
 
-  # 发帖事件
+  # Topic created event
   DiscourseEvent.on(:topic_created) do |topic, opts, user|
     handler.on_topic_created(topic, user)
   end
 
-  # 回复事件
+  # Post created event (replies)
   DiscourseEvent.on(:post_created) do |post, opts, user|
     handler.on_post_created(post, user)
   end
 
-  # 点赞事件
+  # Like events - listen to both like_added and like_created for compatibility
   DiscourseEvent.on(:like_added) do |post, user|
     handler.on_like_added(post, user)
   end
 
-  # 信任等级变更事件
+  DiscourseEvent.on(:like_created) do |post, user|
+    handler.on_like_created(post, user)
+  end
+
+  # Trust level change event
   DiscourseEvent.on(:user_trust_level_change) do |user, old_level, new_level|
     handler.on_trust_level_change(user, new_level)
   end
 
-  # 注册签到路由 - 代理到后端
+  # Register checkin URL to serializer
   add_to_serializer(:current_user, :chb_checkin_url) do
     Discourse.base_url + "/chb/checkin"
   end

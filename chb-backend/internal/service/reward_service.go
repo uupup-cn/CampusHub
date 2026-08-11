@@ -10,12 +10,12 @@ import (
 )
 
 type RewardService struct {
-	db         *gorm.DB
-	rewardRepo *repository.RewardRepo
-	poolRepo   *repository.PoolRepo
+	db          *gorm.DB
+	rewardRepo  *repository.RewardRepo
+	poolRepo    *repository.PoolRepo
 	balanceRepo *repository.UserBalanceRepo
-	txRepo     *repository.TransactionRepo
-	ledgerSvc  *LedgerService
+	txRepo      *repository.TransactionRepo
+	ledgerSvc   *LedgerService
 }
 
 func NewRewardService(
@@ -42,22 +42,23 @@ type RewardRequest struct {
 	RefType         string
 	RefID           int64
 	IdempotencyKey  string
+	TrustLevel      int16
 	IPAddress       string
 }
 
 type RewardResponse struct {
-	Amount      int64   `json:"amount"`
-	TrustLevel  int16   `json:"trust_level"`
-	Multiplier  float64 `json:"multiplier"`
-	FinalAmount int64   `json:"final_amount"`
-	EarnedToday int64   `json:"earned_today"`
-	DailyCap    int64   `json:"daily_cap"`
-	Status      string  `json:"status"`
-	RejectReason string `json:"reject_reason,omitempty"`
+	Amount       int64   `json:"amount"`
+	TrustLevel   int16   `json:"trust_level"`
+	Multiplier   float64 `json:"multiplier"`
+	FinalAmount  int64   `json:"final_amount"`
+	EarnedToday  int64   `json:"earned_today"`
+	DailyCap     int64   `json:"daily_cap"`
+	Status       string  `json:"status"`
+	RejectReason string  `json:"reject_reason,omitempty"`
 }
 
 func (s *RewardService) Grant(req *RewardRequest) (*RewardResponse, error) {
-	// 1. Idempotency check
+	// 1. Idempotency check by ref
 	existingLog, err := s.rewardRepo.GetLogByRef(req.RefType, req.RefID, req.DiscourseUserID)
 	if err == nil && existingLog != nil {
 		return &RewardResponse{Status: "duplicate", RejectReason: "duplicate"}, nil
@@ -84,13 +85,12 @@ func (s *RewardService) Grant(req *RewardRequest) (*RewardResponse, error) {
 		ub, err := s.balanceRepo.GetByUserIDWithLock(tx, req.DiscourseUserID)
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
-				// 首次活跃的论坛用户自动建档，余额从 0 开始
 				ub = &repository.UserBalance{
 					DiscourseUserID: req.DiscourseUserID,
 					Username:        fmt.Sprintf("user_%d", req.DiscourseUserID),
 					Balance:         0,
 					Version:         1,
-					TrustLevel:      0,
+					TrustLevel:      req.TrustLevel,
 					Status:          "active",
 				}
 				if err := s.balanceRepo.CreateWithTx(tx, ub); err != nil {
@@ -99,6 +99,14 @@ func (s *RewardService) Grant(req *RewardRequest) (*RewardResponse, error) {
 			} else {
 				return errcode.ErrDatabase
 			}
+		}
+
+		// 4b. Update trust level if provided and different
+		if req.TrustLevel > 0 && ub.TrustLevel != req.TrustLevel {
+			if err := s.balanceRepo.UpdateTrustLevel(tx, req.DiscourseUserID, req.TrustLevel); err != nil {
+				return errcode.ErrDatabase
+			}
+			ub.TrustLevel = req.TrustLevel
 		}
 
 		// 5. Check account status
@@ -112,7 +120,7 @@ func (s *RewardService) Grant(req *RewardRequest) (*RewardResponse, error) {
 			return errcode.ErrDatabase
 		}
 
-		// 7. Get today's quota
+		// 7. Get today quota
 		today := time.Now().Format("2006-01-02")
 		quota, err := s.rewardRepo.GetQuota(req.DiscourseUserID, today)
 		earnedToday := int64(0)
@@ -120,7 +128,7 @@ func (s *RewardService) Grant(req *RewardRequest) (*RewardResponse, error) {
 			earnedToday = quota.EarnedToday
 		}
 
-		// 8. Check daily caps (user-level + level-level)
+		// 8. Check daily caps
 		userDailyCap := rule.DailyCapPerUser
 		if userDailyCap > cap.DailyCap {
 			userDailyCap = cap.DailyCap
@@ -162,7 +170,7 @@ func (s *RewardService) Grant(req *RewardRequest) (*RewardResponse, error) {
 
 		// 14. Update daily quota
 		newEarned := earnedToday + finalAmount
-		if err := s.rewardRepo.UpsertQuota(tx, req.DiscourseUserID, today, newEarned, fmt.Sprintf("{\"%s\":1}", req.Action)); err != nil {
+		if err := s.rewardRepo.UpsertQuota(tx, req.DiscourseUserID, today, newEarned, fmt.Sprintf("{"%s":1}", req.Action)); err != nil {
 			return errcode.ErrDatabase
 		}
 
@@ -180,9 +188,6 @@ func (s *RewardService) Grant(req *RewardRequest) (*RewardResponse, error) {
 			RefID:           &req.RefID,
 			Status:          "completed",
 		}
-		ip := req.IPAddress
-		_ = ip
-
 		if err := s.txRepo.Create(tx, txModel); err != nil {
 			return errcode.ErrDatabase
 		}
@@ -215,7 +220,7 @@ func (s *RewardService) Grant(req *RewardRequest) (*RewardResponse, error) {
 			Status:      "completed",
 		}
 		return nil
-	})
+})
 
 	if err != nil {
 		if reject, ok := err.(*RejectError); ok {
@@ -240,16 +245,19 @@ func (e *RejectError) Error() string {
 
 // Checkin records a daily checkin
 func (s *RewardService) Checkin(userID int64, ipAddress string) (*RewardResponse, error) {
+	return s.CheckinWithTrustLevel(userID, 0, ipAddress)
+}
+
+// CheckinWithTrustLevel records a daily checkin with trust level
+func (s *RewardService) CheckinWithTrustLevel(userID int64, trustLevel int16, ipAddress string) (*RewardResponse, error) {
 	today := time.Now().Format("2006-01-02")
 	idempotencyKey := fmt.Sprintf("checkin_%d_%s", userID, today)
 
 	// Check if already checked in today
 	quota, err := s.rewardRepo.GetQuota(userID, today)
 	if err == nil {
-		// Check if checkin action was already counted
 		existingLog, _ := s.rewardRepo.GetLogByRef("checkin", userID, userID)
 		if existingLog != nil {
-			// Check if it was today
 			if existingLog.CreatedAt.Format("2006-01-02") == today {
 				return &RewardResponse{Status: "rejected", RejectReason: "already_checked_in"}, nil
 			}
@@ -263,11 +271,12 @@ func (s *RewardService) Checkin(userID int64, ipAddress string) (*RewardResponse
 		RefType:         "checkin",
 		RefID:           userID,
 		IdempotencyKey:  idempotencyKey,
+		TrustLevel:      trustLevel,
 		IPAddress:       ipAddress,
 	})
 }
 
-// CheckinStatus returns today's checkin status
+// CheckinStatus returns today checkin status
 func (s *RewardService) CheckinStatus(userID int64) (map[string]interface{}, error) {
 	today := time.Now().Format("2006-01-02")
 	checkedIn := false
@@ -284,6 +293,48 @@ func (s *RewardService) CheckinStatus(userID int64) (map[string]interface{}, err
 		"last_checkin_date": today,
 	}, nil
 }
+
 func (s *RewardService) ListRewardRules() ([]repository.RewardRule, error) {
 	return s.rewardRepo.ListRules()
+}
+
+// SyncTrustLevel updates user trust level in the balance table
+func (s *RewardService) SyncTrustLevel(discourseUserID int64, trustLevel int16) (map[string]interface{}, error) {
+	ub, err := s.balanceRepo.GetByUserID(discourseUserID)
+	oldLevel := int16(0)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// Create new user balance with trust level
+			ub = &repository.UserBalance{
+				DiscourseUserID: discourseUserID,
+				Username:        fmt.Sprintf("user_%d", discourseUserID),
+				Balance:         0,
+				Version:         1,
+				TrustLevel:      trustLevel,
+				Status:          "active",
+			}
+			if err := s.balanceRepo.Create(ub); err != nil {
+				return nil, err
+			}
+			return map[string]interface{}{
+				"old_trust_level": 0,
+				"new_trust_level": trustLevel,
+				"created":         true,
+			}, nil
+		}
+		return nil, err
+	}
+	oldLevel = ub.TrustLevel
+
+	if ub.TrustLevel != trustLevel {
+		if err := s.balanceRepo.UpdateTrustLevel(s.db, discourseUserID, trustLevel); err != nil {
+			return nil, err
+		}
+	}
+
+	return map[string]interface{}{
+		"old_trust_level": oldLevel,
+		"new_trust_level": trustLevel,
+		"updated":         oldLevel != trustLevel,
+	}, nil
 }

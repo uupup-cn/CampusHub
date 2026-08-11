@@ -5,9 +5,10 @@ module ChbApiClient
       @api_key = SiteSetting.chb_backend_api_key
     end
 
-    def send_reward(action, user_id, ref_type, ref_id, idempotency_key)
+    def send_reward(action, user_id, ref_type, ref_id, idempotency_key, trust_level = 0)
+      url = @base_url + "/api/chb/reward"
       response = Excon.post(
-        "\#{@base_url}/api/chb/reward",
+        url,
         headers: {
           "Content-Type" => "application/json",
           "X-API-Key" => @api_key
@@ -17,18 +18,20 @@ module ChbApiClient
           discourse_user_id: user_id,
           ref_type: ref_type,
           ref_id: ref_id,
-          idempotency_key: idempotency_key
+          idempotency_key: idempotency_key,
+          trust_level: trust_level
         }.to_json
       )
       JSON.parse(response.body)
     rescue => e
-      Rails.logger.error("CHB Reward API error: \#{e.message}")
+      Rails.logger.error("CHB Reward API error: " + e.message.to_s)
       nil
     end
 
     def sync_trust_level(user_id, trust_level, idempotency_key)
+      url = @base_url + "/api/chb/sync/trust-level"
       response = Excon.post(
-        "\#{@base_url}/api/chb/sync/trust-level",
+        url,
         headers: {
           "Content-Type" => "application/json",
           "X-API-Key" => @api_key
@@ -41,37 +44,40 @@ module ChbApiClient
       )
       JSON.parse(response.body)
     rescue => e
-      Rails.logger.error("CHB Trust Level Sync error: \#{e.message}")
+      Rails.logger.error("CHB Trust Level Sync error: " + e.message.to_s)
       nil
     end
 
-    def checkin(user_id)
+    def checkin(user_id, trust_level = 0)
+      url = @base_url + "/api/chb/checkin"
       response = Excon.post(
-        "\#{@base_url}/api/chb/checkin",
+        url,
         headers: {
           "Content-Type" => "application/json",
           "X-API-Key" => @api_key
         },
         body: {
-          discourse_user_id: user_id
+          discourse_user_id: user_id,
+          trust_level: trust_level
         }.to_json
       )
       JSON.parse(response.body)
     rescue => e
-      Rails.logger.error("CHB Checkin API error: \#{e.message}")
+      Rails.logger.error("CHB Checkin API error: " + e.message.to_s)
       nil
     end
 
     def checkin_status(user_id)
+      url = @base_url + "/api/chb/checkin/status?user_id=" + user_id.to_s
       response = Excon.get(
-        "\#{@base_url}/api/chb/checkin/status?user_id=\#{user_id}",
+        url,
         headers: {
           "X-API-Key" => @api_key
         }
       )
       JSON.parse(response.body)
     rescue => e
-      Rails.logger.error("CHB Checkin Status error: \#{e.message}")
+      Rails.logger.error("CHB Checkin Status error: " + e.message.to_s)
       nil
     end
   end
