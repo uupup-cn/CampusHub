@@ -42,7 +42,7 @@ docker exec chb-postgres psql -U chb -c "CREATE DATABASE chb_platform;" 2>/dev/n
 
 echo "=== Migrations ==="
 cd $DEPLOY_DIR/chb-backend
-go run ./cmd/migrate deploy/config.prod.yaml
+go run ./cmd/migrate /deploy/config.prod.yaml
 
 echo "=== Build Backend ==="
 go build -o $DEPLOY_DIR/chb-backend ./cmd/server
