@@ -17,21 +17,19 @@ class ChbEventHandler
     @client.send_reward(data[:action], data[:discourse_user_id], data[:ref_type], data[:ref_id], data[:idempotency_key], data[:trust_level])
   end
 
-  def on_like_added(post, user)
-    handle_like(post, user)
-  end
-
-  def on_like_created(post, user)
-    handle_like(post, user)
-  end
-
-  private
-
-  def handle_like(post, user)
-    return unless post&.user
+  # like_created event receives a PostAction object
+  # post_action.user = the liker
+  # post_action.post = the liked post
+  # post_action.post.user = the post author (reward recipient)
+  def on_like_created(post_action)
+    return unless post_action
+    post = post_action.post
+    liker = post_action.user
+    return unless post && liker
     # Don't reward self-likes
-    return if post.user_id == user.id
-    data = ChbEventSerializer.serialize_like(post, user)
+    return if post.user_id == liker.id
+
+    data = ChbEventSerializer.serialize_like(post, liker)
     @client.send_reward(data[:action], data[:discourse_user_id], data[:ref_type], data[:ref_id], data[:idempotency_key], data[:trust_level])
   end
 

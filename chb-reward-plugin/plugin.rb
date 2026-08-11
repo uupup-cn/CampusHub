@@ -1,6 +1,6 @@
 # name: chb_reward_plugin
 # about: Monitor Discourse events and forward to CampusHub backend reward engine
-# version: 1.0.0
+# version: 1.1.0
 # authors: CampusHub Team
 # url: https://github.com/campushub/chb-reward-plugin
 
@@ -27,13 +27,10 @@ after_initialize do
     handler.on_post_created(post, user)
   end
 
-  # Like events - listen to both like_added and like_created for compatibility
-  DiscourseEvent.on(:like_added) do |post, user|
-    handler.on_like_added(post, user)
-  end
-
-  DiscourseEvent.on(:like_created) do |post, user|
-    handler.on_like_created(post, user)
+  # Like event - triggered by PostActionCreator.create_post_action
+  # Args: (post_action, creator) where post_action is a PostAction record
+  DiscourseEvent.on(:like_created) do |post_action, creator|
+    handler.on_like_created(post_action)
   end
 
   # Trust level change event
