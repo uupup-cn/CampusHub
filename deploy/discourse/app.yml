@@ -31,9 +31,6 @@ volumes:
   - volume:
       host: /var/discourse/shared
       guest: /shared
-  - volume:
-      host: /var/discourse/shared/uploads
-      guest: /var/www/discourse/public/uploads
 
 hooks:
   after_assets_precompile:
