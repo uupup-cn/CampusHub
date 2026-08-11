@@ -299,7 +299,7 @@ chb_reward_plugin 监听 Discourse 事件，通过 HTTP 转发到后端奖励引
 
 ### 16.3 环境协作流程
 
-代码仓库：https://github.com/uupup-cn/CampusHub（私有，默认分支 main，受保护）
+代码仓库：https://github.com/uupup-cn/CampusHub（公开，默认分支 main，已启用分支保护：禁止直推、强制 PR + 1 人审查、禁止强推与删除）
 
 WSL2 开发 → Git 提交 → GitHub 仓库（PR 审查）→ devbox 服务器拉取部署 → 测试验证 → 生产运行
 
