@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, ShoppingBag, Package, CheckCircle2, Clock, XCircle, RefreshCcw } from 'lucide-react';
 import { apiRequest, formatCHB, formatDate, type Paginated } from '@/lib/api';
 
@@ -24,12 +24,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<'buyer' | 'seller'>('buyer');
 
-  useEffect(() => {
-    fetchOrders();
-  }, [role]);
-
-  async function fetchOrders() {
-    setLoading(true);
+  const fetchOrders = useCallback(async () => {
     try {
       const res = await apiRequest<Paginated<Order>>(`/api/marketplace/orders?role=${role}&page=1&page_size=50`);
       if (res.code === 0) {
@@ -38,7 +33,11 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [role]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
   const statusBadge = (status: string) => {
     switch (status) {

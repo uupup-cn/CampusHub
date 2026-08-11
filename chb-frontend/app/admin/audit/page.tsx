@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FileText, Search, RefreshCcw } from 'lucide-react';
 import { apiRequest, formatDate, type Paginated } from '@/lib/api';
 
@@ -20,12 +20,7 @@ export default function AdminAuditPage() {
   const [loading, setLoading] = useState(true);
   const [action, setAction] = useState('');
 
-  useEffect(() => {
-    fetchLogs();
-  }, [action]);
-
-  async function fetchLogs() {
-    setLoading(true);
+  const fetchLogs = useCallback(async () => {
     try {
       const params = new URLSearchParams({ page: '1', page_size: '50' });
       if (action) params.set('action', action);
@@ -34,7 +29,11 @@ export default function AdminAuditPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [action]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
 
   const actionLabel = (a: string) => {
     const map: Record<string, string> = {

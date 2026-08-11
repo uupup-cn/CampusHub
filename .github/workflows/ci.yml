@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Go)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: chb
+          POSTGRES_PASSWORD: chb_test_2024
+          POSTGRES_DB: chb_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U chb -d chb_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: chb-backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: chb-backend/go.mod
+          cache: true
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Integration tests (PostgreSQL service)
+        run: go test -count=1 -timeout 180s ./...
+
+  frontend:
+    name: Frontend (Next.js)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chb-frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: chb-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Production build
+        run: npm run build
+
+  plugin:
+    name: Plugin (Ruby syntax)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chb-reward-plugin
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Syntax check
+        run: |
+          for f in plugin.rb lib/*.rb spec/*.rb; do
+            ruby -c "$f" >/dev/null
+          done
+          echo "Ruby syntax OK"

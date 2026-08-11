@@ -77,7 +77,7 @@ function AuthorizeContent() {
         },
       });
       if (res.code === 0 && res.data?.redirect_uri) {
-        window.location.href = res.data.redirect_uri;
+        window.location.assign(res.data.redirect_uri);
       } else {
         setError(res.message || '授权失败');
         setSubmitting(false);
@@ -89,7 +89,7 @@ function AuthorizeContent() {
   };
 
   const handleCancel = () => {
-    window.location.href = redirectUri + '?error=access_denied&state=' + state;
+    window.location.assign(redirectUri + '?error=access_denied&state=' + state);
   };
 
   if (loading) {
