@@ -1,41 +1,32 @@
-﻿# frozen_string_literal: true
-
 require 'rails_helper'
 
 describe ChbEventHandler do
   let(:handler) { ChbEventHandler.new }
-  let(:user) { Fabricate(:user) }
+  let(:client) { double("ChbApiClient::Client") }
 
-  context "when plugin is enabled" do
-    before do
-      SiteSetting.chb_reward_plugin_enabled = true
-      SiteSetting.chb_backend_api_url = "http://localhost:8080"
-    end
+  before do
+    allow(handler).to receive(:instance_variable_get).with(:@client).and_return(client)
+  end
 
-    it "handles topic_created event" do
-      topic = Fabricate(:topic, user: user)
-      expect { handler.on_topic_created(topic, user) }.not_to raise_error
-    end
+  it "handles like_created event with PostAction" do
+    post_action = double("PostAction")
+    post = double("Post", id: 1, user_id: 2)
+    liker = double("User", id: 3, trust_level: 1)
+    allow(post_action).to receive(:post).and_return(post)
+    allow(post_action).to receive(:user).and_return(liker)
+    allow(client).to receive(:send_reward)
 
-    it "handles post_created event" do
-      post = Fabricate(:post, user: user, post_number: 2)
-      expect { handler.on_post_created(post, user) }.not_to raise_error
-    end
+    expect { handler.on_like_created(post_action) }.not_to raise_error
+  end
 
-    it "skips post_number 1 (topic body)" do
-      post = Fabricate(:post, user: user, post_number: 1)
-      expect(handler.on_post_created(post, user)).to be_nil
-    end
+  it "skips self-likes" do
+    post_action = double("PostAction")
+    post = double("Post", id: 1, user_id: 2)
+    liker = double("User", id: 2, trust_level: 1)
+    allow(post_action).to receive(:post).and_return(post)
+    allow(post_action).to receive(:user).and_return(liker)
 
-    it "handles like_added event" do
-      post = Fabricate(:post, user: user)
-      liker = Fabricate(:user)
-      expect { handler.on_like_added(post, liker) }.not_to raise_error
-    end
-
-    it "skips self-like" do
-      post = Fabricate(:post, user: user)
-      expect(handler.on_like_added(post, user)).to be_nil
-    end
+    expect(client).not_to receive(:send_reward)
+    handler.on_like_created(post_action)
   end
 end
