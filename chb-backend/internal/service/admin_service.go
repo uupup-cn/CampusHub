@@ -178,15 +178,27 @@ func (s *AdminService) GetStats() (*AdminStats, error) {
 	todayTx, _ := s.txRepo.GetTodayCount()
 	waterLevel := float64(publicPool.Balance) / float64(publicPool.TotalSupply)
 
+	_, totalUsers, _ := s.balanceRepo.List(1, 1)
+
+	var activeUsersToday int64
+	s.db.Table("transactions").Select("COUNT(DISTINCT discourse_user_id)").
+		Where("DATE(created_at) = CURRENT_DATE").Count(&activeUsersToday)
+
+	var totalOrders int64
+	s.db.Table("marketplace_orders").Count(&totalOrders)
+
+	_, pendingApps, _ := s.marketRepo.ListPendingApplications(1, 1)
+	_, pendingItems, _ := s.marketRepo.ListPendingItems(1, 1)
+
 	stats := &AdminStats{
-		TotalUsers:            0,
-		ActiveUsersToday:      0,
+		TotalUsers:            totalUsers,
+		ActiveUsersToday:      activeUsersToday,
 		TotalTransactions:     txCount,
 		TodayTransactions:     todayTx,
-		TotalMarketplaceOrders: 0,
+		TotalMarketplaceOrders: totalOrders,
 		PublicPoolWaterLevel:  waterLevel,
-		PendingApplications:   0,
-		PendingItems:          0,
+		PendingApplications:   pendingApps,
+		PendingItems:          pendingItems,
 	}
 	return stats, nil
 }

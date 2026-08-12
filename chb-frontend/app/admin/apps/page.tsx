@@ -47,8 +47,8 @@ export default function AdminAppsPage() {
       body: {
         app_name: form.app_name,
         app_description: form.app_description,
-        redirect_uris: ['http://localhost:3000/callback'],
-        scopes: ['profile:read', 'chb:read', 'chb:spend'],
+        redirect_uris: JSON.stringify([typeof window !== 'undefined' ? window.location.origin + '/callback' : 'http://localhost:3000/callback']),
+        scopes: JSON.stringify(['profile:read', 'chb:read', 'chb:spend']),
         min_trust_level: Number(form.min_trust_level),
         fee_rate: Number(form.fee_rate),
         bound_user_id: form.bound_user_id ? Number(form.bound_user_id) : null,
