@@ -2,13 +2,42 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Store, LayoutDashboard, ShieldCheck, Sparkles, MessageSquare, LogIn } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Store, LayoutDashboard, ShieldCheck, Sparkles, MessageSquare, LogIn, LogOut, Wallet, User } from 'lucide-react';
+import { apiRequest, formatCHB } from '@/lib/api';
 
 const FORUM_URL = process.env.NEXT_PUBLIC_FORUM_URL || 'http://112.213.106.104:9800';
+
+interface UserInfo {
+  user_id: number;
+  username: string;
+  trust_level: number;
+}
 
 export default function Navbar() {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
+  const [user, setUser] = useState<UserInfo | null>(null);
+  const [balance, setBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/me').then(r => r.json()).then(data => {
+      if (data.code === 0 && data.data?.logged_in) {
+        const u = data.data;
+        setUser({ user_id: u.user_id, username: u.username, trust_level: u.trust_level });
+        localStorage.setItem('chb_user_id', String(u.user_id));
+        // 设置 user_id 后立即查余额
+        return apiRequest<{ balance: number }>('/api/chb/balance');
+      }
+      return null;
+    }).then(res => {
+      if (res && res.code === 0) setBalance(res.data.balance);
+    }).catch(() => {});
+  }, []);
+
+  const handleLogout = () => {
+    window.location.href = FORUM_URL + '/logout?return_url=' + window.location.origin;
+  };
 
   const links = isAdmin
     ? [
@@ -65,14 +94,37 @@ export default function Navbar() {
             </Link>
           )}
 
-          <button
-            onClick={() => { window.location.href = FORUM_URL + '/login'; }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 text-xs text-gray-400 hover:text-white hover:border-white/25 transition-all"
-            title="登录论坛账号"
-          >
-            <LogIn size={14} className="text-violet-400" />
-            登录
-          </button>
+          {user ? (
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                <User size={14} className="text-cyan-400" />
+                {user.username}
+                <span className="badge badge-purple !text-[10px] !px-1.5 !py-0.5">TL{user.trust_level}</span>
+              </span>
+              {balance !== null && (
+                <span className="flex items-center gap-1 text-xs text-amber-300">
+                  <Wallet size={13} />
+                  {formatCHB(balance)}
+                </span>
+              )}
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 px-2 py-1.5 rounded-full border border-white/10 text-xs text-gray-500 hover:text-red-400 hover:border-red-500/30 transition-all"
+                title="退出登录"
+              >
+                <LogOut size={13} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { window.location.href = FORUM_URL + '/login?return_url=' + window.location.origin + '/auth/callback'; }}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 text-xs text-gray-400 hover:text-white hover:border-white/25 transition-all"
+              title="登录论坛账号"
+            >
+              <LogIn size={14} className="text-violet-400" />
+              登录
+            </button>
+          )}
         </div>
       </div>
     </nav>
