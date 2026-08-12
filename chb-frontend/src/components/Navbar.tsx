@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { Store, LayoutDashboard, ShieldCheck, Sparkles, MessageSquare, LogIn, LogOut, Wallet, User } from 'lucide-react';
 import { apiRequest, formatCHB } from '@/lib/api';
 
-const FORUM_URL = process.env.NEXT_PUBLIC_FORUM_URL || 'http://112.213.106.104:9800';
+const FORUM_URL = process.env.NEXT_PUBLIC_DISCOURSE_URL || 'http://198.44.177.228:9800';
 
 interface UserInfo {
   user_id: number;
