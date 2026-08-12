@@ -13,7 +13,7 @@ else
   puts "Admin already exists: #{u.username}"
 end
 
-SiteSetting.chb_backend_api_url = "http://localhost:9090"
+SiteSetting.chb_backend_api_url = "http://198.44.177.228"
 puts "chb_backend_api_url = #{SiteSetting.chb_backend_api_url}"
 SiteSetting.chb_backend_api_key = "test-api-key"
 puts "chb_backend_api_key = #{SiteSetting.chb_backend_api_key}"
