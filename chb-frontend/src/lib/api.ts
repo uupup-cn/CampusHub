@@ -1,5 +1,5 @@
 // API 基础配置
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:9090';
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
 
 // 用户身份（开发/测试环境通过 X-User-ID 模拟）
 export function getUserID(): number {
