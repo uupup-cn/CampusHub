@@ -1,8 +1,9 @@
-package handler
+锘縫ackage handler
 
 import (
 	"strconv"
 
+	"github.com/campushub/chb-backend/internal/repository"
 	"github.com/campushub/chb-backend/internal/service"
 	"github.com/campushub/chb-backend/pkg/errcode"
 	"github.com/campushub/chb-backend/pkg/response"
@@ -10,11 +11,12 @@ import (
 )
 
 type LedgerHandler struct {
-	svc *service.LedgerService
+	svc     *service.LedgerService
+	appRepo *repository.AppRepo
 }
 
-func NewLedgerHandler(svc *service.LedgerService) *LedgerHandler {
-	return &LedgerHandler{svc: svc}
+func NewLedgerHandler(svc *service.LedgerService, appRepo *repository.AppRepo) *LedgerHandler {
+	return &LedgerHandler{svc: svc, appRepo: appRepo}
 }
 
 func (h *LedgerHandler) GetBalance(c *gin.Context) {
@@ -44,15 +46,15 @@ func (h *LedgerHandler) Spend(c *gin.Context) {
 
 	userID := getUserID(c)
 
-	// Extract client_id from context (set by BearerAuth middleware)
-	// If no client_id, use default fee rate (internal call)
+	// Look up app fee_rate and bound_user_id from DB for OAuth calls
 	feeRate := 10.0
 	var boundUserID *int64
 	if clientID, exists := c.Get("client_id"); exists {
 		if cid, ok := clientID.(string); ok && cid != "" {
-			// OAuth app call - in production, look up app fee_rate from DB
-			// For now, use the default 10% fee rate
-			_ = cid
+			if app, err := h.appRepo.GetByClientID(cid); err == nil {
+				feeRate = app.FeeRate
+				boundUserID = app.BoundUserID
+			}
 		}
 	}
 

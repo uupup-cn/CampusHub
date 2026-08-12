@@ -288,15 +288,12 @@ chb_reward_plugin 监听 Discourse 事件，通过 HTTP 转发到后端奖励引
 |------|------|
 | 用途 | 集成测试、预发布验证、Discourse 插件测试、最终部署 |
 | 访问方式 | SSH（已配置别名 devbox，WSL 和 Windows 均已配置密钥免密登录） |
-| IP | 112.213.106.104 |
+| IP | 198.44.177.228 |
 | 用户名 | root |
-| 操作系统 | Ubuntu 24.04.1 LTS |
-| SSH 端口 | 33848 |
-| CPU / 内存 | 6 核 / 7.8 GiB |
-| 磁盘 | 39G（可用 30G） |
-| Swap | 4G |
-| Docker | 29.7.2 + Compose 5.4.0 |
-| PostgreSQL | 16.14（Docker 容器 chb-postgres，端口 5432，库 chb_test / 用户 chb） |
+| 操作系统 | Ubuntu 24.04 LTS |
+| SSH 端口 | 22 |
+| Docker | 最新稳定版 |
+| PostgreSQL | 18-alpine（Docker 容器 chb-postgres，端口 5433，库 chb_platform / 用户 chb） |
 | 代码来源 | 仅从 Git 仓库拉取，禁止直接修改代码 |
 | 配置管理 | 配置文件通过部署脚本管理，不手动编辑 |
 | 运行服务 | Discourse Docker、PostgreSQL、Go 后端（生产二进制）、Next.js 前端（生产构建）、Nginx |

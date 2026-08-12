@@ -41,7 +41,7 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *gin.Engine {
 
 	// Handlers
 	health := NewHealthHandler(db)
-	ledger := NewLedgerHandler(ledgerSvc)
+	ledger := NewLedgerHandler(ledgerSvc, appRepo)
 	reward := NewRewardHandler(rewardSvc)
 	oauth := NewOAuthHandler(idpSvc)
 	market := NewMarketplaceHandler(marketSvc)
