@@ -36,7 +36,17 @@ func (h *AdminHandler) UpdateSettings(c *gin.Context) {
 		response.Error(c, errcode.ErrParamInvalid)
 		return
 	}
-	// TODO: persist settings
+	settings := &service.SystemSetting{
+		MarketplaceFeeRate:    req.MarketplaceFeeRate,
+		AutoReleaseEnabled:    req.AutoReleaseEnabled,
+		AutoReleaseThreshold:  req.AutoReleaseThreshold,
+		AutoReleaseRatio:      req.AutoReleaseRatio,
+		AutoReleaseMonthlyCap: req.AutoReleaseMonthlyCap,
+	}
+	if err := h.svc.UpdateSettings(settings); err != nil {
+		response.Error(c, errcode.ErrDatabase)
+		return
+	}
 	response.Success(c, req)
 }
 
