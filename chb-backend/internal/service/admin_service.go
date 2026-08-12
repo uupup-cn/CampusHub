@@ -340,6 +340,16 @@ func (s *AdminService) RecoverPoints(userID int64, amount int64, reason string, 
 		if err := s.balanceRepo.UpdateBalance(tx, userID, newBalance, ub.Version+1); err != nil {
 			return err
 		}
+		// 追回积分回注公共池（事务内操作，确保原子性）
+		publicPool, err := s.poolRepo.GetPublicPoolWithLock(tx)
+		if err != nil {
+			return errcode.ErrDatabase
+		}
+		if err := s.poolRepo.UpdateBalanceTx(tx, publicPool.ID, publicPool.Balance+amount); err != nil {
+			return errcode.ErrDatabase
+		}
+		// 写交易记录（唯一幂等键防止重复）
+		idemKey := "recover_" + randomHex(16)
 		ttx := &repository.Transaction{
 			TxType:          "recover",
 			DiscourseUserID: userID,
@@ -347,10 +357,21 @@ func (s *AdminService) RecoverPoints(userID int64, amount int64, reason string, 
 			Fee:             0,
 			NetAmount:       amount,
 			FromType:        "user",
-			ToType:          "system",
+			ToType:          "pool",
+			IdempotencyKey:  idemKey,
 			Description:     &reason,
 			Status:          "completed",
 		}
-		return s.txRepo.Create(tx, ttx)
+		if err := s.txRepo.Create(tx, ttx); err != nil {
+			return errcode.ErrDatabase
+		}
+		// 审计日志（事务内写入，保证一致性）
+		detailMsg := "recover " + fmt.Sprintf("%d", amount) + " CHB: " + reason
+		detailJSON := fmt.Sprintf(`{"msg": "%s"}`, detailMsg)
+		tx.Exec(
+			"INSERT INTO audit_logs (operator_id, action, target_type, target_id, detail, ip_address, created_at) VALUES (?, ?, ?, ?, ?::jsonb, ?, NOW())",
+			operatorID, "points_recover", "user", userID, detailJSON, "",
+		)
+		return nil
 	})
 }

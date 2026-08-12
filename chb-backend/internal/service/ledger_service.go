@@ -117,7 +117,7 @@ func (s *LedgerService) Spend(discourseUserID, amount int64, idempotencyKey, des
 		if err != nil {
 			return errcode.ErrDatabase
 		}
-		if err := s.poolRepo.UpdateBalance(officialPool.ID, officialPool.Balance+fee); err != nil {
+		if err := s.poolRepo.UpdateBalanceTx(tx, officialPool.ID, officialPool.Balance+fee); err != nil {
 			return errcode.ErrDatabase
 		}
 
@@ -268,10 +268,10 @@ func (s *LedgerService) Release(amount int64, reason string, operatorID int64) (
 			return errcode.ErrDatabase
 		}
 
-		if err := s.poolRepo.UpdateBalance(officialPool.ID, officialPool.Balance-amount); err != nil {
+		if err := s.poolRepo.UpdateBalanceTx(tx, officialPool.ID, officialPool.Balance-amount); err != nil {
 			return errcode.ErrDatabase
 		}
-		if err := s.poolRepo.UpdateBalance(publicPool.ID, publicPool.Balance+amount); err != nil {
+		if err := s.poolRepo.UpdateBalanceTx(tx, publicPool.ID, publicPool.Balance+amount); err != nil {
 			return errcode.ErrDatabase
 		}
 
