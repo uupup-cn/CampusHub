@@ -15,6 +15,7 @@ type Config struct {
 	JWT       JWTConfig       `yaml:"jwt"`
 	RateLimit RateLimitConfig `yaml:"rate_limit"`
 	CORS      CORSConfig      `yaml:"cors"`
+	AdminKey  string          `yaml:"admin_key"`
 }
 
 type ServerConfig struct {

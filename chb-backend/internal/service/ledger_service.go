@@ -285,11 +285,12 @@ func (s *LedgerService) Release(amount int64, reason string, operatorID int64) (
 			IsAuto:     false,
 			CreatedAt:  now,
 		}
-		// TODO: insert release_log
-		_ = releaseLog
+		if err := releaseLog.Create(tx); err != nil {
+			return errcode.ErrDatabase
+		}
 
 		result = &ReleaseResult{
-			ReleaseID:          0,
+			ReleaseID:          releaseLog.ID,
 			Amount:             amount,
 			NewPublicBalance:   publicPool.Balance + amount,
 			NewOfficialBalance: officialPool.Balance - amount,

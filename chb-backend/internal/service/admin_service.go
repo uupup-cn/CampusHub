@@ -3,6 +3,7 @@ package service
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"time"
 
 	"github.com/campushub/chb-backend/internal/repository"
@@ -48,6 +49,14 @@ func randomHex(n int) string {
 	return hex.EncodeToString(buf)
 }
 
+func (s *AdminService) writeAuditLog(operatorID int64, action string, targetType string, targetID int64, detail string) {
+	detailJSON := fmt.Sprintf(`{"msg": "%s"}`, detail)
+	s.db.Exec(
+		"INSERT INTO audit_logs (operator_id, action, target_type, target_id, detail, ip_address, created_at) VALUES (?, ?, ?, ?, ?::jsonb, ?, NOW())",
+		operatorID, action, targetType, targetID, detailJSON, "",
+	)
+}
+
 // ===== System Config =====
 
 type SystemSetting struct {
@@ -59,13 +68,65 @@ type SystemSetting struct {
 }
 
 func (s *AdminService) GetSettings() *SystemSetting {
-	return &SystemSetting{
+	settings := &SystemSetting{
 		MarketplaceFeeRate:   10.0,
 		AutoReleaseEnabled:   false,
 		AutoReleaseThreshold: 80,
 		AutoReleaseRatio:     50,
 		AutoReleaseMonthlyCap: 10000000,
 	}
+
+	var configs []repository.SystemConfigModel
+	s.db.Find(&configs)
+	for _, cfg := range configs {
+		switch cfg.ConfigKey {
+		case "marketplace_fee_rate":
+			settings.MarketplaceFeeRate = parseFloat(cfg.ConfigValue)
+		case "auto_release_enabled":
+			settings.AutoReleaseEnabled = cfg.ConfigValue == "true"
+		case "auto_release_threshold":
+			settings.AutoReleaseThreshold = parseInt(cfg.ConfigValue)
+		case "auto_release_ratio":
+			settings.AutoReleaseRatio = parseInt(cfg.ConfigValue)
+		case "auto_release_monthly_cap":
+			settings.AutoReleaseMonthlyCap = parseInt64(cfg.ConfigValue)
+		}
+	}
+	return settings
+}
+
+func (s *AdminService) UpdateSettings(settings *SystemSetting) error {
+	updates := map[string]string{
+		"marketplace_fee_rate":     fmt.Sprintf("%v", settings.MarketplaceFeeRate),
+		"auto_release_enabled":     fmt.Sprintf("%v", settings.AutoReleaseEnabled),
+		"auto_release_threshold":   fmt.Sprintf("%d", settings.AutoReleaseThreshold),
+		"auto_release_ratio":       fmt.Sprintf("%d", settings.AutoReleaseRatio),
+		"auto_release_monthly_cap": fmt.Sprintf("%d", settings.AutoReleaseMonthlyCap),
+	}
+	for key, val := range updates {
+		s.db.Model(&repository.SystemConfigModel{}).
+			Where("config_key = ?", key).
+			Update("config_value", val)
+	}
+	return nil
+}
+
+func parseFloat(s string) float64 {
+	var f float64
+	fmt.Sscanf(s, "%f", &f)
+	return f
+}
+
+func parseInt(s string) int {
+	var i int
+	fmt.Sscanf(s, "%d", &i)
+	return i
+}
+
+func parseInt64(s string) int64 {
+	var i int64
+	fmt.Sscanf(s, "%d", &i)
+	return i
 }
 
 // ===== Trust Level Caps =====
@@ -96,7 +157,11 @@ func (s *AdminService) CreateApp(app *repository.AppModel) error {
 	if app.Status == "" {
 		app.Status = "active"
 	}
-	return s.appRepo.Create(app)
+	err := s.appRepo.Create(app)
+	if err == nil {
+		s.writeAuditLog(0, "app_create", "app", app.ID, "create app: "+app.AppName)
+	}
+	return err
 }
 
 func (s *AdminService) UpdateApp(app *repository.AppModel) error {
@@ -104,7 +169,11 @@ func (s *AdminService) UpdateApp(app *repository.AppModel) error {
 }
 
 func (s *AdminService) DeleteApp(id int64) error {
-	return s.appRepo.Delete(id)
+	err := s.appRepo.Delete(id)
+	if err == nil {
+		s.writeAuditLog(0, "app_delete", "app", id, "delete app")
+	}
+	return err
 }
 
 // ===== Marketplace Review =====
@@ -114,18 +183,17 @@ func (s *AdminService) ListPendingApplications(page, pageSize int) ([]repository
 }
 
 func (s *AdminService) ReviewApplication(id int64, status, comment string, reviewerID int64) error {
-	app, err := s.marketRepo.GetItem(id)
-	if err != nil {
-		return errcode.ErrNotFound
-	}
-	_ = app
 	update := &repository.MerchantApplicationModel{
 		ID:            id,
 		Status:        status,
 		ReviewedBy:    &reviewerID,
 		ReviewComment: &comment,
 	}
-	return s.marketRepo.UpdateApplication(update)
+	err := s.marketRepo.UpdateApplication(update)
+	if err == nil {
+		s.writeAuditLog(0, "merchant_approve", "application", id, "review: "+status)
+	}
+	return err
 }
 
 func (s *AdminService) ListPendingItems(page, pageSize int) ([]repository.MarketplaceItemModel, int64, error) {
@@ -138,7 +206,11 @@ func (s *AdminService) ReviewItem(id int64, status string) error {
 		return errcode.ErrNotFound
 	}
 	item.Status = status
-	return s.marketRepo.UpdateItem(item)
+	err = s.marketRepo.UpdateItem(item)
+	if err == nil {
+		s.writeAuditLog(0, "item_review", "item", id, "review: "+status)
+	}
+	return err
 }
 
 // ===== User Management =====
@@ -149,11 +221,19 @@ func (s *AdminService) ListUsers(page, pageSize int, keyword string) ([]reposito
 }
 
 func (s *AdminService) FreezeUser(userID int64) error {
-	return s.balanceRepo.SetStatus(s.db, userID, "frozen")
+	err := s.balanceRepo.SetStatus(s.db, userID, "frozen")
+	if err == nil {
+		s.writeAuditLog(0, "user_freeze", "user", userID, "freeze user")
+	}
+	return err
 }
 
 func (s *AdminService) UnfreezeUser(userID int64) error {
-	return s.balanceRepo.SetStatus(s.db, userID, "active")
+	err := s.balanceRepo.SetStatus(s.db, userID, "active")
+	if err == nil {
+		s.writeAuditLog(0, "user_unfreeze", "user", userID, "unfreeze user")
+	}
+	return err
 }
 
 // ===== Stats =====
@@ -216,13 +296,61 @@ type AuditLogEntry struct {
 }
 
 func (s *AdminService) ListAuditLogs(action string, operatorID int64, startDate, endDate string, page, pageSize int) ([]AuditLogEntry, int64, error) {
-	// TODO: implement audit log query
-	return []AuditLogEntry{}, 0, nil
+	query := s.db.Table("audit_logs")
+	if action != "" {
+		query = query.Where("action = ?", action)
+	}
+	if operatorID > 0 {
+		query = query.Where("operator_id = ?", operatorID)
+	}
+	if startDate != "" {
+		query = query.Where("created_at >= ?", startDate)
+	}
+	if endDate != "" {
+		query = query.Where("created_at <= ?", endDate)
+	}
+
+	var total int64
+	query.Count(&total)
+
+	if page <= 0 { page = 1 }
+	if pageSize <= 0 || pageSize > 100 { pageSize = 20 }
+	offset := (page - 1) * pageSize
+
+	var logs []AuditLogEntry
+	query.Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&logs)
+	return logs, total, nil
 }
 
 // ===== User Recover =====
 
 func (s *AdminService) RecoverPoints(userID int64, amount int64, reason string, operatorID int64) error {
-	// TODO: implement point recovery
-	return nil
+	if amount <= 0 {
+		return errcode.ErrParamInvalid
+	}
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		ub, err := s.balanceRepo.GetByUserIDWithLock(tx, userID)
+		if err != nil {
+			return errcode.ErrNotFound
+		}
+		if ub.Balance < amount {
+			return errcode.ErrBalanceInsufficient
+		}
+		newBalance := ub.Balance - amount
+		if err := s.balanceRepo.UpdateBalance(tx, userID, newBalance, ub.Version+1); err != nil {
+			return err
+		}
+		ttx := &repository.Transaction{
+			TxType:          "recover",
+			DiscourseUserID: userID,
+			Amount:          amount,
+			Fee:             0,
+			NetAmount:       amount,
+			FromType:        "user",
+			ToType:          "system",
+			Description:     &reason,
+			Status:          "completed",
+		}
+		return s.txRepo.Create(tx, ttx)
+	})
 }

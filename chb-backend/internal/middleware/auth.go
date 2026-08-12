@@ -113,10 +113,10 @@ func APIKeyAuth() gin.HandlerFunc {
 	}
 }
 
-func AdminAuth() gin.HandlerFunc {
+func AdminAuth(adminKey string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key := c.GetHeader("X-Admin-Key")
-		if key == "" {
+		if key == "" || key != adminKey {
 			response.Error(c, errcode.ErrPermissionDenied)
 			c.Abort()
 			return

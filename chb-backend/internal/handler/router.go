@@ -90,7 +90,7 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *gin.Engine {
 
 		// Admin API - X-Admin-Key
 		adminAPI := api.Group("/admin")
-		adminAPI.Use(middleware.AdminAuth())
+		adminAPI.Use(middleware.AdminAuth(cfg.AdminKey))
 		{
 			adminAPI.GET("/settings", admin.GetSettings)
 			adminAPI.PUT("/settings", admin.UpdateSettings)

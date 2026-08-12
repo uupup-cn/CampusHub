@@ -42,3 +42,5 @@ cors:
     - X-API-Key
     - X-Admin-Key
     - X-User-ID
+
+admin_key: "chb-admin-2026-secret"

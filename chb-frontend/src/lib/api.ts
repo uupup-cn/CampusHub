@@ -47,7 +47,7 @@ export async function apiRequest<T = Record<string, unknown>>(
 
   // 管理后台 API 自动携带 Admin Key
   if (path.includes('/api/admin/')) {
-    headers['X-Admin-Key'] = process.env.NEXT_PUBLIC_ADMIN_KEY || 'campushub-admin-2026';
+    headers['X-Admin-Key'] = process.env.NEXT_PUBLIC_ADMIN_KEY || '';
   }
 
   const res = await fetch(`${API_BASE}${path}`, {
