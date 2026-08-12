@@ -46,6 +46,7 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *gin.Engine {
 	oauth := NewOAuthHandler(idpSvc)
 	market := NewMarketplaceHandler(marketSvc)
 	admin := NewAdminHandler(adminSvc)
+	auth := NewAuthHandler()
 
 	// Routes
 	r.GET("/health", health.Health)
@@ -117,6 +118,12 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *gin.Engine {
 
 			adminAPI.GET("/audit-logs", admin.ListAuditLogs)
 			adminAPI.GET("/stats", admin.GetStats)
+		}
+
+		// Auth API - Discourse session check
+		authAPI := api.Group("/auth")
+		{
+			authAPI.GET("/me", auth.Me)
 		}
 
 		// OAuth API
