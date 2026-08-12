@@ -1,4 +1,4 @@
-package repository
+﻿package repository
 
 import (
 	"gorm.io/gorm"
@@ -21,8 +21,15 @@ func (r *PoolRepo) GetByType(poolType string) (*Pool, error) {
 	return &p, nil
 }
 
+// UpdateBalance updates pool balance using the repo default connection (outside transactions).
 func (r *PoolRepo) UpdateBalance(poolID, newBalance int64) error {
 	return r.db.Model(&Pool{}).Where("id = ?", poolID).Update("balance", newBalance).Error
+}
+
+// UpdateBalanceTx updates pool balance within a transaction, avoiding lock conflicts
+// when the row was previously locked with FOR UPDATE in the same transaction.
+func (r *PoolRepo) UpdateBalanceTx(tx *gorm.DB, poolID, newBalance int64) error {
+	return tx.Model(&Pool{}).Where("id = ?", poolID).Update("balance", newBalance).Error
 }
 
 func (r *PoolRepo) GetPublicPool() (*Pool, error) {
