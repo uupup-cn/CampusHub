@@ -729,6 +729,101 @@ POST /api/marketplace/apply
 }
 ```
 
+
+### 6.5a 商家入驻状态
+
+```
+GET /api/marketplace/my-status
+```
+
+**鉴权**：Bearer Token 或 X-User-ID
+
+**响应示例**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "is_merchant": false,
+    "shop_name": "",
+    "status": "none"
+  }
+}
+```
+
+**字段说明**：
+- `is_merchant`：是否已入驻（status=approved 时为 true）
+- `status`：入驻状态（none/pending/approved/rejected）
+- `shop_name`：店铺名称
+
+### 7.1 用户积分流水
+
+```
+GET /api/chb/me/transactions
+```
+
+**鉴权**：Bearer Token 或 X-User-ID
+
+**查询参数**：
+- `page`：页码，默认 1
+- `page_size`：每页条数，默认 20
+- `type`：流水类型筛选（reward/spend/recover），可选
+
+**响应示例**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "items": [
+      {
+        "id": 10,
+        "tx_type": "reward",
+        "discourse_user_id": 1,
+        "amount": 10,
+        "fee": 0,
+        "net_amount": 10,
+        "from_type": "pool",
+        "to_type": "user",
+        "description": null,
+        "status": "completed",
+        "created_at": "2026-08-13T00:04:56Z"
+      }
+    ],
+    "total": 10,
+    "page": 1,
+    "page_size": 20
+  }
+}
+```
+
+### 8.1 用户已授权应用列表
+
+```
+GET /api/oauth/my-apps
+```
+
+**鉴权**：Bearer Token 或 X-User-ID
+
+**响应示例**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "app_name": "CampusHub Test App",
+        "client_id": "chb_xxxxxxxx",
+        "scopes": "["profile:read", "chb:read", "chb:spend"]",
+        "created_at": "2026-08-12T23:34:41Z"
+      }
+    ]
+  }
+}
+```
+
 ### 6.6 创建订单
 
 ```
