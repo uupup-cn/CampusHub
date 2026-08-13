@@ -135,20 +135,27 @@ func (r *DisputeRepo) ListSellerWinExpired() ([]DisputeModel, error) {
 
 func (r *DisputeRepo) UpdateSellerResponse(id int64, action, reason string, images *string) error {
 	now := time.Now()
+	statusValue := "rejected"
+	if action == "accept" {
+		statusValue = "accepted"
+	}
 	return r.db.Model(&DisputeModel{}).Where("id = ?", id).
 		Updates(map[string]interface{}{
 			"seller_action":      action,
 			"seller_reason":      reason,
 			"seller_images":      images,
 			"seller_responded_at": now,
-			"status":             "accepted" if action == "accept" else "rejected",
+			"status":             statusValue,
 			"updated_at":         now,
 		}).Error
 }
 
 func (r *DisputeRepo) UpdateAdminDecision(id int64, adminID int64, decision, note string) error {
 	now := time.Now()
-	status := "admin_buyer_win" if decision == "buyer_win" else "admin_seller_win"
+	status := "admin_seller_win"
+	if decision == "buyer_win" {
+		status = "admin_buyer_win"
+	}
 	return r.db.Model(&DisputeModel{}).Where("id = ?", id).
 		Updates(map[string]interface{}{
 			"admin_id":       adminID,
