@@ -43,15 +43,16 @@ export default function AdminSettingsPage() {
   const toast = useToast();
 
   useEffect(() => {
-    Promise.all([
-      apiRequest<RewardRule[]>('/api/chb/reward/rules'),
-      apiRequest<TrustLevel[]>('/api/admin/trust-levels'),
-      apiRequest<SystemSettings>('/api/admin/settings'),
-    ]).then(([r, c, s]) => {
-      if (r.code === 0) setRules(r.data);
-      if (c.code === 0) setCaps(c.data);
-      if (s.code === 0) setSettings(s.data);
-    }).finally(() => setLoading(false));
+    apiRequest<RewardRule[]>('/api/chb/reward/rules')
+      .then(r => { if (r.code === 0) setRules(r.data); })
+      .catch(() => {});
+    apiRequest<TrustLevel[]>('/api/admin/trust-levels')
+      .then(c => { if (c.code === 0) setCaps(c.data); })
+      .catch(() => {});
+    apiRequest<SystemSettings>('/api/admin/settings')
+      .then(s => { if (s.code === 0) setSettings(s.data); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const updateRule = async (action: string, field: string, value: number | boolean) => {
