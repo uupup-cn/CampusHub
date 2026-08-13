@@ -247,8 +247,7 @@ func (s *DisputeService) ListAllDisputes(page, pageSize int, status string) ([]D
 	}
 	var result []DisputeDetail
 	for _, d := range list {
-		order, _ := s.orderRepo.GetOrderByID(d.OrderID)
-		result = append(result, DisputeDetail{Dispute: d, ItemTitle: item_title})
+		result = append(result, DisputeDetail{Dispute: d, ItemTitle: ""})
 	}
 	return result, total, nil
 }
