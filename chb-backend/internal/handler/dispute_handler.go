@@ -40,7 +40,7 @@ func (h *DisputeHandler) CreateDispute(c *gin.Context) {
 	}
 	dispute, err := h.svc.CreateDispute(buyerID, orderID, req)
 	if err != nil {
-		response.Error(c, err)
+		response.Error(c, errcode.ErrInternal)
 		return
 	}
 	response.Success(c, dispute)
@@ -92,7 +92,7 @@ func (h *DisputeHandler) AcceptDispute(c *gin.Context) {
 		return
 	}
 	if err := h.svc.AcceptDispute(sellerID, id); err != nil {
-		response.Error(c, err)
+		response.Error(c, errcode.ErrInternal)
 		return
 	}
 	response.Success(c, gin.H{"status": "accepted"})
@@ -120,7 +120,7 @@ func (h *DisputeHandler) RejectDispute(c *gin.Context) {
 		return
 	}
 	if err := h.svc.RejectDispute(sellerID, id, req); err != nil {
-		response.Error(c, err)
+		response.Error(c, errcode.ErrInternal)
 		return
 	}
 	response.Success(c, gin.H{"status": "rejected"})
@@ -177,7 +177,7 @@ func (h *DisputeHandler) AdminDecide(c *gin.Context) {
 		return
 	}
 	if err := h.svc.AdminDecide(adminID, id, req.Decision, req.Note); err != nil {
-		response.Error(c, err)
+		response.Error(c, errcode.ErrInternal)
 		return
 	}
 	response.Success(c, gin.H{"status": "decided"})
