@@ -86,3 +86,41 @@ func (h *UserHandler) ListMyApps(c *gin.Context) {
 	}
 	response.Success(c, gin.H{"items": result})
 }
+
+
+// GetSummary 返回用户首页统计
+// GET /api/chb/me/summary
+func (h *UserHandler) GetSummary(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == 0 {
+		response.Error(c, errcode.ErrUnauthorized)
+		return
+	}
+
+	// 7天收入: 最近7天 reward 类型的 amount 总和
+	var income7d int64
+	h.db.Raw(`SELECT COALESCE(SUM(amount), 0) FROM transactions 
+		WHERE discourse_user_id = ? AND tx_type = 'reward' 
+		AND created_at >= NOW() - INTERVAL '7 days'`, userID).Scan(&income7d)
+
+	// 7天支出: 最近7天 spend 类型的 amount 总和
+	var expense7d int64
+	h.db.Raw(`SELECT COALESCE(SUM(amount), 0) FROM transactions 
+		WHERE discourse_user_id = ? AND tx_type = 'spend' 
+		AND created_at >= NOW() - INTERVAL '7 days'`, userID).Scan(&expense7d)
+
+	// 待处理争议: 当前用户作为卖家且 status=pending
+	var pendingDisputes int64
+	h.db.Raw(`SELECT COUNT(*) FROM disputes WHERE seller_id = ? AND status = 'pending'`, userID).Scan(&pendingDisputes)
+
+	// 我发起的争议: 当前用户作为买家发起的争议数
+	var myDisputes int64
+	h.db.Raw(`SELECT COUNT(*) FROM disputes WHERE buyer_id = ?`, userID).Scan(&myDisputes)
+
+	response.Success(c, gin.H{
+		"income_7d":       income7d,
+		"expense_7d":      expense7d,
+		"pending_disputes": pendingDisputes,
+		"my_disputes":     myDisputes,
+	})
+}

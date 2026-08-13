@@ -118,11 +118,55 @@ type UserBalance struct {
 	DiscourseUserID int64  `json:"discourse_user_id"`
 	Username        string `json:"username"`
 	Balance         int64  `json:"balance"`
+	PendingBalance  int64  `json:"pending_balance"`
 	Version         int64  `json:"version"`
 	TrustLevel      int16  `json:"trust_level"`
 	TotalEarned     int64  `json:"total_earned"`
 	TotalSpent      int64  `json:"total_spent"`
 	Status          string `json:"status"`
+}
+
+
+func (r *UserBalanceRepo) AddPendingBalance(tx *gorm.DB, discourseUserID int64, amount int64) error {
+	result := tx.Model(&UserBalance{}).
+		Where("discourse_user_id = ?", discourseUserID).
+		Update("pending_balance", gorm.Expr("pending_balance + ?", amount))
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrOptimisticLock
+	}
+	return nil
+}
+
+func (r *UserBalanceRepo) DeductPendingBalance(tx *gorm.DB, discourseUserID int64, amount int64) error {
+	result := tx.Model(&UserBalance{}).
+		Where("discourse_user_id = ? AND pending_balance >= ?", discourseUserID, amount).
+		Update("pending_balance", gorm.Expr("pending_balance - ?", amount))
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrOptimisticLock
+	}
+	return nil
+}
+
+func (r *UserBalanceRepo) TransferPendingToAvailable(tx *gorm.DB, discourseUserID int64, amount int64) error {
+	result := tx.Model(&UserBalance{}).
+		Where("discourse_user_id = ? AND pending_balance >= ?", discourseUserID, amount).
+		Updates(map[string]interface{}{
+			"balance":         gorm.Expr("balance + ?", amount),
+			"pending_balance": gorm.Expr("pending_balance - ?", amount),
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrOptimisticLock
+	}
+	return nil
 }
 
 var ErrOptimisticLock = &OptimisticLockError{}

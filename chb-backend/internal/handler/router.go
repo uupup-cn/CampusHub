@@ -31,12 +31,14 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *gin.Engine {
 	rewardRepo := repository.NewRewardRepo(db)
 	appRepo := repository.NewAppRepo(db)
 	marketRepo := repository.NewMarketplaceRepo(db)
+	disputeRepo := repository.NewDisputeRepo(db)
 
 	// Services
 	ledgerSvc := service.NewLedgerService(db, poolRepo, balanceRepo, txRepo)
 	rewardSvc := service.NewRewardService(db, rewardRepo, poolRepo, balanceRepo, txRepo, ledgerSvc)
 	idpSvc := idp.NewIdpService(db, appRepo)
 	marketSvc := service.NewMarketplaceService(db, marketRepo, balanceRepo, poolRepo, txRepo)
+	disputeSvc := service.NewDisputeService(db, disputeRepo, marketRepo, balanceRepo, txRepo, poolRepo)
 	adminSvc := service.NewAdminService(db, balanceRepo, txRepo, poolRepo, rewardRepo, marketRepo, appRepo)
 
 	// Handlers
@@ -45,6 +47,7 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *gin.Engine {
 	reward := NewRewardHandler(rewardSvc)
 	oauth := NewOAuthHandler(idpSvc)
 	market := NewMarketplaceHandler(marketSvc)
+	dispute := NewDisputeHandler(disputeSvc)
 	admin := NewAdminHandler(adminSvc)
 	auth := NewAuthHandler()
 	userH := NewUserHandler(db, txRepo, appRepo)
@@ -66,6 +69,7 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			chb.GET("/pools", ledger.GetPools)
 			chb.GET("/audit", ledger.Audit)
 			chb.GET("/me/transactions", userH.ListMyTransactions)
+			chb.GET("/me/summary", userH.GetSummary)
 
 			// Write operations - need "spend" scope for OAuth
 			chb.POST("/spend", ledger.Spend)
@@ -90,6 +94,11 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			marketplace.GET("/orders", market.ListOrders)
 			marketplace.POST("/apply", market.ApplyMerchant)
 			marketplace.GET("/my-status", market.MyStatus)
+			marketplace.POST("/orders/:id/dispute", dispute.CreateDispute)
+			marketplace.GET("/disputes", dispute.ListDisputes)
+			marketplace.GET("/disputes/:id", dispute.GetDispute)
+			marketplace.PUT("/disputes/:id/accept", dispute.AcceptDispute)
+			marketplace.PUT("/disputes/:id/reject", dispute.RejectDispute)
 		}
 
 		// Admin API - X-Admin-Key
@@ -113,6 +122,10 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			adminAPI.PUT("/marketplace/applications/:id", admin.ReviewApplication)
 			adminAPI.GET("/marketplace/items", admin.ListPendingItems)
 			adminAPI.PUT("/marketplace/items/:id", admin.ReviewItem)
+
+			adminAPI.GET("/disputes", dispute.AdminListDisputes)
+			adminAPI.GET("/disputes/:id", dispute.AdminGetDispute)
+			adminAPI.PUT("/disputes/:id/decide", dispute.AdminDecide)
 
 			adminAPI.GET("/users", admin.ListUsers)
 			adminAPI.PUT("/users/:id/freeze", admin.FreezeUser)

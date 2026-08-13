@@ -152,6 +152,12 @@ func (r *MarketplaceRepo) GetOrder(orderNo string) (*MarketplaceOrderModel, erro
 	return &order, err
 }
 
+func (r *MarketplaceRepo) GetOrderByID(id int64) (*MarketplaceOrderModel, error) {
+	var order MarketplaceOrderModel
+	err := r.db.Where("id = ?", id).First(&order).Error
+	return &order, err
+}
+
 func (r *MarketplaceRepo) ListOrdersByUser(userID int64, role, status string, page, pageSize int) ([]MarketplaceOrderModel, int64, error) {
 	var list []MarketplaceOrderModel
 	var total int64

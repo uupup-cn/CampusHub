@@ -12,6 +12,7 @@ import (
 
 	"github.com/campushub/chb-backend/internal/config"
 	"github.com/campushub/chb-backend/internal/handler"
+	"github.com/campushub/chb-backend/internal/scheduler"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -45,6 +46,9 @@ func main() {
 	log.Println("Database connected successfully")
 
 	router := handler.SetupRouter(cfg, db)
+
+	// 启动定时任务（每天18:00 CST执行）
+	scheduler.StartScheduler(db)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
