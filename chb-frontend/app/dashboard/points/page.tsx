@@ -6,12 +6,43 @@ import { apiRequest, formatCHB, formatDate, type Paginated } from '@/lib/api';
 
 interface Transaction {
   id: number;
-  type: string;
+  tx_type: string;
   amount: number;
-  balance_after: number;
-  description: string;
-  ref_type: string;
+  fee: number;
+  net_amount: number;
+  from_type: string;
+  to_type: string;
+  ref_type: string | null;
+  description: string | null;
+  status: string;
   created_at: string;
+}
+
+const typeLabels: Record<string, string> = {
+  reward: '奖励',
+  spend: '消费',
+  recover: '追回',
+  release: '释放',
+};
+
+const refLabels: Record<string, string> = {
+  topic: '发帖奖励',
+  reply: '回复奖励',
+  checkin: '签到奖励',
+  like: '被点赞奖励',
+};
+
+function getDescription(tx: Transaction): string {
+  if (tx.description) return tx.description;
+  if (tx.ref_type && refLabels[tx.ref_type]) return refLabels[tx.ref_type];
+  return typeLabels[tx.tx_type] || tx.tx_type;
+}
+
+function getDisplayAmount(tx: Transaction): number {
+  if (tx.tx_type === 'spend' || tx.tx_type === 'recover') {
+    return -Math.abs(tx.amount);
+  }
+  return Math.abs(tx.amount);
 }
 
 export default function DashboardPointsPage() {
@@ -72,22 +103,23 @@ export default function DashboardPointsPage() {
                 <th>类型</th>
                 <th>描述</th>
                 <th>金额</th>
-                <th>余额</th>
                 <th>时间</th>
               </tr>
             </thead>
             <tbody>
-              {txs.map(tx => (
-                <tr key={tx.id}>
-                  <td><span className="badge !text-[10px] badge-gray">{tx.type}</span></td>
-                  <td className="truncate max-w-xs">{tx.description}</td>
-                  <td className={tx.amount > 0 ? 'text-emerald-300 font-medium' : 'text-red-300 font-medium'}>
-                    {tx.amount > 0 ? '+' : ''}{formatCHB(tx.amount)}
-                  </td>
-                  <td className="text-gray-500">{formatCHB(tx.balance_after)}</td>
-                  <td className="text-gray-600 text-xs">{formatDate(tx.created_at)}</td>
-                </tr>
-              ))}
+              {txs.map(tx => {
+                const displayAmount = getDisplayAmount(tx);
+                return (
+                  <tr key={tx.id}>
+                    <td><span className="badge !text-[10px] badge-gray">{typeLabels[tx.tx_type] || tx.tx_type}</span></td>
+                    <td className="truncate max-w-xs">{getDescription(tx)}</td>
+                    <td className={displayAmount > 0 ? 'text-emerald-300 font-medium' : 'text-red-300 font-medium'}>
+                      {displayAmount > 0 ? '+' : ''}{formatCHB(displayAmount)}
+                    </td>
+                    <td className="text-gray-600 text-xs">{formatDate(tx.created_at)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
