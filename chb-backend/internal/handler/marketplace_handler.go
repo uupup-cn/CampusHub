@@ -174,3 +174,17 @@ func (h *MarketplaceHandler) ApplyMerchant(c *gin.Context) {
 	}
 	response.Success(c, gin.H{"status": "pending"})
 }
+
+func (h *MarketplaceHandler) MyStatus(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == 0 {
+		response.Error(c, errcode.ErrUnauthorized)
+		return
+	}
+	result, err := h.svc.GetMerchantStatus(userID)
+	if err != nil {
+		response.Error(c, errcode.ErrInternal)
+		return
+	}
+	response.Success(c, result)
+}

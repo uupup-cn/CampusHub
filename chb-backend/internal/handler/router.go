@@ -47,6 +47,7 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *gin.Engine {
 	market := NewMarketplaceHandler(marketSvc)
 	admin := NewAdminHandler(adminSvc)
 	auth := NewAuthHandler()
+	userH := NewUserHandler(db, txRepo, appRepo)
 
 	// Routes
 	r.GET("/health", health.Health)
@@ -64,6 +65,7 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			chb.GET("/checkin/status", reward.CheckinStatus)
 			chb.GET("/pools", ledger.GetPools)
 			chb.GET("/audit", ledger.Audit)
+			chb.GET("/me/transactions", userH.ListMyTransactions)
 
 			// Write operations - need "spend" scope for OAuth
 			chb.POST("/spend", ledger.Spend)
@@ -87,6 +89,7 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			marketplace.POST("/orders", market.CreateOrder)
 			marketplace.GET("/orders", market.ListOrders)
 			marketplace.POST("/apply", market.ApplyMerchant)
+			marketplace.GET("/my-status", market.MyStatus)
 		}
 
 		// Admin API - X-Admin-Key
@@ -130,6 +133,7 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *gin.Engine {
 		oauthAPI := api.Group("/oauth")
 		{
 			oauthAPI.GET("/app-info", oauth.AppInfo)
+			oauthAPI.GET("/my-apps", userH.ListMyApps)
 			oauthAPI.POST("/authorize/confirm", oauth.Confirm)
 		}
 	}

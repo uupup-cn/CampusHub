@@ -289,3 +289,15 @@ func (s *MarketplaceService) ApplyMerchant(userID int64, shopName, description s
 	}
 	return s.marketRepo.CreateApplication(app)
 }
+
+func (s *MarketplaceService) GetMerchantStatus(userID int64) (map[string]interface{}, error) {
+	app, err := s.marketRepo.GetApplicationByUser(userID)
+	if err != nil || app == nil {
+		return map[string]interface{}{"is_merchant": false, "status": "none", "shop_name": ""}, nil
+	}
+	return map[string]interface{}{
+		"is_merchant": app.Status == "approved",
+		"status":      app.Status,
+		"shop_name":   app.ShopName,
+	}, nil
+}

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Search, Filter, ArrowUpDown, ShoppingBag, PlusCircle, Package, Sparkles, TrendingUp, Layers } from 'lucide-react';
+import { Search, Filter, ArrowUpDown, ShoppingBag, Package, Sparkles, TrendingUp, Layers } from 'lucide-react';
 import { apiRequest, formatCHB, formatDate, type Paginated } from '@/lib/api';
 import Reveal from '@/components/Reveal';
 
@@ -118,23 +118,7 @@ export default function MarketplacePage() {
           </div>
         </Reveal>
 
-        {/* Actions */}
-        <Reveal delay={0.1}>
-          <div className="flex flex-wrap gap-4">
-            <Link href="/marketplace/apply" className="btn-primary">
-              <PlusCircle size={16} />
-              申请入驻
-            </Link>
-            <Link href="/marketplace/my-items" className="btn-ghost">
-              <Package size={16} />
-              我的商品
-            </Link>
-            <Link href="/marketplace/orders" className="btn-ghost">
-              <ShoppingBag size={16} />
-              我的订单
-            </Link>
-          </div>
-        </Reveal>
+
       </section>
 
       {/* Filters */}

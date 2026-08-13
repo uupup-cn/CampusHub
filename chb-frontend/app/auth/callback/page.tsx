@@ -12,13 +12,12 @@ function CallbackContent() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    // Discourse 登录成功后会带 return_url 跳回来
-    // 检查 /api/auth/me 确认登录状态
     fetch('/api/auth/me').then(r => r.json()).then(data => {
       if (data.code === 0 && data.data?.logged_in) {
         localStorage.setItem('chb_user_id', String(data.data.user_id));
         setStatus('success');
         setMessage('欢迎回来，' + data.data.username);
+        window.dispatchEvent(new Event('auth-state-changed'));
         setTimeout(() => router.push('/'), 1500);
       } else {
         setStatus('error');

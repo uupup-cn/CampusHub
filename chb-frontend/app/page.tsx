@@ -49,7 +49,7 @@ export default function Home() {
   return (
     <div className="overflow-x-hidden">
       {/* Hero */}
-      <section className="relative min-h-[calc(100vh-4rem)] flex flex-col justify-center px-6">
+      <section className="relative min-h-[calc(100vh-4rem)] flex flex-col justify-center px-6 pb-0">
         {/* Floating orbs */}
         {!reduce && (
           <>
@@ -86,18 +86,25 @@ export default function Home() {
             </span>
           </motion.div>
 
-          <h1 className="display-title !text-[clamp(3rem,9vw,8rem)] mb-8 text-center">
-            {heroWords.map((w, i) => (
-              <motion.span
-                key={w}
-                className={i % 2 === 1 ? 'block text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-300' : 'block'}
-                initial={reduce ? false : { opacity: 0, y: 60, rotate: i % 2 === 1 ? 3 : -2 }}
-                animate={{ opacity: 1, y: 0, rotate: 0 }}
-                transition={{ duration: 1.1, delay: 0.15 + i * 0.16, ease }}
-              >
-                {w}
-              </motion.span>
-            ))}
+          <h1 className="display-title !text-[clamp(2.5rem,8vw,7rem)] mb-8">
+            <motion.div
+              className="flex items-baseline gap-3 justify-start"
+              initial={reduce ? false : { opacity: 0, x: -40 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 1.1, delay: 0.15, ease }}
+            >
+              <span>让知识</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-300">流动</span>
+            </motion.div>
+            <motion.div
+              className="flex items-baseline gap-3 justify-end mt-2"
+              initial={reduce ? false : { opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 1.1, delay: 0.31, ease }}
+            >
+              <span>让价值</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-fuchsia-400 to-violet-400">循环</span>
+            </motion.div>
           </h1>
 
           <motion.p
@@ -129,7 +136,7 @@ export default function Home() {
 
           {/* Live stats strip */}
           <motion.div
-            className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl mx-auto"
+            className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-6xl mx-auto"
             initial={reduce ? false : { opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 1.25, ease }}
