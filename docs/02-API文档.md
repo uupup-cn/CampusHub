@@ -1121,3 +1121,122 @@ GET /api/health
 | 数据库字段参考 | [AGENT.md §6](../AGENT.md#6-数据库设计) | 表字段映射 |
 | 开发后端模块 | [03-开发计划](03-开发计划.md) | 模块实现方案 |
 | 前端调用 API | [03-开发计划](03-开发计划.md) | 前端页面设计 |
+
+
+### 9. 争议管理 API
+
+#### 9.1 发起争议
+
+```
+POST /api/marketplace/orders/:id/dispute
+```
+
+**鉴权**：Bearer Token 或 X-User-ID
+
+**请求参数**：
+```json
+{
+  "reason": "商品与描述不符",
+  "images": ["http://xxx/img1.jpg"]
+}
+```
+
+**约束**：仅买入订单、3天内、未发起过争议
+
+#### 9.2 争议列表
+
+```
+GET /api/marketplace/disputes?role=buyer|seller&page=1&page_size=20
+```
+
+**鉴权**：Bearer Token 或 X-User-ID
+
+#### 9.3 争议详情
+
+```
+GET /api/marketplace/disputes/:id
+```
+
+#### 9.4 卖家同意退款
+
+```
+PUT /api/marketplace/disputes/:id/accept
+```
+
+**鉴权**：Bearer Token 或 X-User-ID（卖家）
+
+#### 9.5 卖家拒绝退款
+
+```
+PUT /api/marketplace/disputes/:id/reject
+```
+
+**请求参数**：
+```json
+{
+  "reason": "商品已正常交付",
+  "images": ["http://xxx/evidence.jpg"]
+}
+```
+
+#### 9.6 管理员争议列表
+
+```
+GET /api/admin/disputes?page=1&page_size=20&status=rejected
+```
+
+**鉴权**：X-Admin-Key
+
+#### 9.7 管理员判定
+
+```
+PUT /api/admin/disputes/:id/decide
+```
+
+**请求参数**：
+```json
+{
+  "decision": "buyer_win",
+  "note": "卖家未能提供有效交付证据"
+}
+```
+
+**decision 枚举**：buyer_win（退款）/ seller_win（卖家胜，48h后转可用）
+
+### 10. 用户统计 API
+
+#### 10.1 首页统计
+
+```
+GET /api/chb/me/summary
+```
+
+**鉴权**：Bearer Token 或 X-User-ID
+
+**响应示例**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "income_7d": 160,
+    "expense_7d": 25,
+    "pending_disputes": 0,
+    "my_disputes": 0
+  }
+}
+```
+
+**字段说明**：
+- `income_7d`：最近7天收入（reward类型交易总和）
+- `expense_7d`：最近7天支出（spend类型交易总和）
+- `pending_disputes`：待处理争议数（用户作为卖家，status=pending）
+- `my_disputes`：我发起的争议数（用户作为买家，所有状态）
+
+#### 10.2 余额查询（更新）
+
+```
+GET /api/chb/balance
+```
+
+**响应新增字段**：`pending_balance`（未来积分）
