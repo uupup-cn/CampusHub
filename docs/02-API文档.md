@@ -139,6 +139,7 @@ GET /api/chb/balance
     "user_id": 123,
     "username": "testuser",
     "balance": 10000,
+    "pending_balance": 0,
     "trust_level": 2,
     "status": "active",
     "total_earned": 50000,

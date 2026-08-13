@@ -28,6 +28,7 @@ type BalanceInfo struct {
 	UserID      int64  `json:"user_id"`
 	Username    string `json:"username"`
 	Balance     int64  `json:"balance"`
+	PendingBalance int64 `json:"pending_balance"`
 	TrustLevel  int16  `json:"trust_level"`
 	Status      string `json:"status"`
 	TotalEarned int64  `json:"total_earned"`
@@ -52,6 +53,7 @@ func (s *LedgerService) GetBalance(discourseUserID int64) (*BalanceInfo, error) 
 		UserID:      ub.DiscourseUserID,
 		Username:    ub.Username,
 		Balance:     ub.Balance,
+		PendingBalance: ub.PendingBalance,
 		TrustLevel:  ub.TrustLevel,
 		Status:      ub.Status,
 		TotalEarned: ub.TotalEarned,

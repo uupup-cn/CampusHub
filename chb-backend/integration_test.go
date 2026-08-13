@@ -1,4 +1,4 @@
-﻿package chb_test
+package chb_test
 
 import (
 	"bytes"

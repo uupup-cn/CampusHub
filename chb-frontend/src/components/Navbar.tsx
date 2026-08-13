@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Store, LayoutDashboard, ShieldCheck, Sparkles,
   MessageSquare, LogIn, LogOut, Wallet, User, ChevronDown,
-  Package, ShoppingBag, PlusCircle, Settings,
+  Package, ShoppingBag, PlusCircle, Settings, Clock,
 } from 'lucide-react';
 import { apiRequest, formatCHB } from '@/lib/api';
 
@@ -32,7 +32,7 @@ export default function Navbar() {
   const isDashboard = pathname?.startsWith('/dashboard');
   const isMarketplace = pathname?.startsWith('/marketplace');
   const [user, setUser] = useState<UserInfo | null>(null);
-  const [balance, setBalance] = useState<number | null>(null);
+  const [balance, setBalance] = useState<{ balance: number; pending_balance: number } | null>(null);
   const [merchantStatus, setMerchantStatus] = useState<{ is_merchant: boolean; status: string } | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const hoverRef = useRef<HTMLDivElement>(null);
@@ -44,11 +44,11 @@ export default function Navbar() {
         const u = data.data;
         setUser({ user_id: u.user_id, username: u.username, trust_level: u.trust_level, avatar_template: u.avatar_template });
         localStorage.setItem('chb_user_id', String(u.user_id));
-        return apiRequest<{ balance: number }>('/api/chb/balance');
+        return apiRequest<{ balance: number; pending_balance: number }>('/api/chb/balance');
       }
       return null;
     }).then(res => {
-      if (res && res.code === 0) setBalance(res.data.balance);
+      if (res && res.code === 0) setBalance(res.data);
     }).catch(() => {});
   };
 
@@ -185,12 +185,19 @@ export default function Navbar() {
                     className="absolute right-0 top-full mt-2 w-56 glass-card !rounded-xl overflow-hidden py-1"
                   >
                     {balance !== null && (
-                      <div className="px-4 py-2.5 border-b border-white/5">
+                      <div className="px-4 py-2.5 border-b border-white/5 space-y-1">
                         <div className="flex items-center gap-2">
                           <Wallet size={14} className="text-amber-300" />
-                          <span className="text-xs text-gray-400">余额</span>
-                          <span className="text-sm font-bold text-amber-300 ml-auto">{formatCHB(balance)}</span>
+                          <span className="text-xs text-gray-400">可用积分</span>
+                          <span className="text-sm font-bold text-amber-300 ml-auto">{formatCHB(balance.balance)}</span>
                         </div>
+                        {balance.pending_balance > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Clock size={14} className="text-violet-300" />
+                            <span className="text-xs text-gray-400">未来积分</span>
+                            <span className="text-sm font-bold text-violet-300 ml-auto">{formatCHB(balance.pending_balance)}</span>
+                          </div>
+                        )}
                       </div>
                     )}
                     {dropdownItems.map((item, i) => {

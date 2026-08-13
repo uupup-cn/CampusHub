@@ -187,6 +187,13 @@ func (s *DisputeService) doRefund(d *repository.DisputeModel, newStatus string) 
 	// 卖家未来积分扣减净额
 	s.balanceRepo.DeductPendingBalance(tx, d.SellerID, order.NetAmount)
 
+	// Fee refund to official pool
+	officialPool, err2 := s.poolRepo.GetOfficialPoolWithLock(tx)
+	if err2 != nil {
+		tx.Rollback()
+		return errcode.ErrInternal
+	}
+	s.poolRepo.UpdateBalanceTx(tx, officialPool.ID, officialPool.Balance-order.Fee)
 	// 写入交易记录 - 买家退款
 	buyerDesc := fmt.Sprintf("争议退款-订单#%d", d.OrderID)
 	tx2 := &repository.Transaction{

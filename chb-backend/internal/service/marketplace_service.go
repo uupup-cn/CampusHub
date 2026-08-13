@@ -176,9 +176,9 @@ func (s *MarketplaceService) CreateOrder(buyerID, itemID int64, quantity int, id
 			return err
 		}
 
-		// Add net to seller
-		if err := s.balanceRepo.UpdateBalance(tx, item.SellerID, seller.Balance+netAmount, seller.Version+1); err != nil {
-			return err
+		// Add net to seller as pending balance (future points)
+		if err := s.balanceRepo.AddPendingBalance(tx, item.SellerID, netAmount); err != nil {
+			return errcode.ErrDatabase
 		}
 
 		// Add fee to official pool
@@ -193,6 +193,8 @@ func (s *MarketplaceService) CreateOrder(buyerID, itemID int64, quantity int, id
 
 		// Create order
 		orderNo := fmt.Sprintf("ORD%d%s", time.Now().UnixMilli(), idempotencyKey[len(idempotencyKey)-6:])
+		pendingReleaseAt := time.Now().Add(7 * 24 * time.Hour)
+		noneStatus := "none"
 		order := &repository.MarketplaceOrderModel{
 			OrderNo:     orderNo,
 			ItemID:      itemID,
@@ -204,6 +206,9 @@ func (s *MarketplaceService) CreateOrder(buyerID, itemID int64, quantity int, id
 			Fee:         fee,
 			NetAmount:   netAmount,
 			Status:      "completed",
+			DisputeStatus:        &noneStatus,
+			PendingReleaseAt:     &pendingReleaseAt,
+			SellerPendingCredited: false,
 		}
 		if err := s.marketRepo.CreateOrder(tx, order); err != nil {
 			return errcode.ErrDatabase

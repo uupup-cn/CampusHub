@@ -26,18 +26,18 @@ function getAvatarUrl(avatarTemplate?: string): string {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [user, setUser] = useState<UserInfo | null>(null);
-  const [balance, setBalance] = useState<number | null>(null);
+  const [balance, setBalance] = useState<{ balance: number; pending_balance: number } | null>(null);
 
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(data => {
       if (data.code === 0 && data.data?.logged_in) {
         setUser({ username: data.data.username, trust_level: data.data.trust_level, avatar_template: data.data.avatar_template });
         localStorage.setItem('chb_user_id', String(data.data.user_id));
-        return apiRequest<{ balance: number }>('/api/chb/balance');
+        return apiRequest<{ balance: number; pending_balance: number }>('/api/chb/balance');
       }
       return null;
     }).then(res => {
-      if (res && res.code === 0) setBalance(res.data.balance);
+      if (res && res.code === 0) setBalance(res.data);
     }).catch(() => {});
   }, []);
 
@@ -75,11 +75,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* Balance */}
-        <div className="px-4 py-3 border-b border-white/5">
-          <div className="text-xs text-gray-500 mb-1">积分余额</div>
-          <div className="text-lg font-bold text-amber-300">
-            {balance !== null ? formatCHB(balance) : '加载中'}
+        <div className="px-4 py-3 border-b border-white/5 space-y-2">
+          <div>
+            <div className="text-xs text-gray-500 mb-1">可用积分</div>
+            <div className="text-lg font-bold text-amber-300">
+              {balance !== null ? formatCHB(balance.balance) : '加载中'}
+            </div>
           </div>
+          {balance !== null && balance.pending_balance > 0 && (
+            <div>
+              <div className="text-xs text-gray-500 mb-1">未来积分</div>
+              <div className="text-sm font-bold text-violet-300">
+                {formatCHB(balance.pending_balance)}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Nav */}

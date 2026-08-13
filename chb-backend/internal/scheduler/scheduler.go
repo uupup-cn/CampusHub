@@ -65,7 +65,8 @@ func (s *Scheduler) releasePendingBalances() {
 	// 查询到期且无争议的订单
 	var orders []repository.MarketplaceOrderModel
 	s.db.Where("status = ? AND pending_release_at <= ? AND seller_pending_credited = ? AND dispute_status IS NULL",
-		"completed", time.Now(), false).Find(&orders)
+		"completed", time.Now(), false).
+		Where("dispute_status IS NULL OR dispute_status = ? OR dispute_status = ?", "none", "closed").Find(&orders)
 
 	for _, order := range orders {
 		tx := s.db.Begin()

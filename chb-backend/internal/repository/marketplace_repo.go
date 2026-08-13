@@ -1,4 +1,4 @@
-﻿package repository
+package repository
 
 import (
 	"time"
@@ -38,6 +38,9 @@ type MarketplaceOrderModel struct {
 	Status      string    `json:"status"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+	DisputeStatus        *string    `json:"dispute_status"`
+	PendingReleaseAt     *time.Time `json:"pending_release_at"`
+	SellerPendingCredited bool       `json:"seller_pending_credited"`
 }
 
 func (MarketplaceOrderModel) TableName() string {
