@@ -857,6 +857,12 @@ POST /api/marketplace/orders
 }
 ```
 
+**双积分行为**：
+- 买家：可用积分（balance）扣除全额（含手续费）
+- 卖家：未来积分（pending_balance）增加净额（扣除手续费后），7天后无争议自动转为可用积分
+- 订单字段：dispute_status="none"，pending_release_at=now+7d，seller_pending_credited=false
+- 手续费：进入官方池；退款时手续费从官方池全额退还
+
 ### 6.7 订单列表
 
 ```
