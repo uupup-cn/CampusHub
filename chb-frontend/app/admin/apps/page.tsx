@@ -20,6 +20,38 @@ interface App {
   scopes?: string;
 }
 
+const scopeLabels: Record<string, string> = {
+  'profile:read': '个人资料读取',
+  'chb:read': '积分查询',
+  'chb:spend': '积分消费',
+};
+
+function parseScopes(scopes: string): string[] {
+  if (!scopes) return [];
+  try {
+    const arr = JSON.parse(scopes);
+    if (Array.isArray(arr)) return arr;
+    return scopes.split(' ');
+  } catch {
+    return scopes.split(' ').filter(function(s) { return s.length > 0; });
+  }
+}
+
+function scopeToLabel(scope: string): string {
+  return scopeLabels[scope] || scope;
+}
+
+function parseRedirectUris(uris: string): string[] {
+  if (!uris) return [];
+  try {
+    const arr = JSON.parse(uris);
+    if (Array.isArray(arr)) return arr;
+    return [uris];
+  } catch {
+    return [uris];
+  }
+}
+
 export default function AdminAppsPage() {
   const [apps, setApps] = useState<App[]>([]);
   const [loading, setLoading] = useState(true);
@@ -240,8 +272,6 @@ export default function AdminAppsPage() {
                 {[
                   { label: 'Client ID', value: detailApp.client_id, color: 'text-violet-300' },
                   { label: 'Client Secret', value: detailApp.client_secret, color: 'text-amber-300' },
-                  { label: '回调地址', value: detailApp.redirect_uris || '未设置', color: 'text-cyan-300' },
-                  { label: '授权范围', value: detailApp.scopes || '未设置', color: 'text-emerald-300' },
                 ].map(function(item, i) {
                   return (
                     <div key={i}>
@@ -255,6 +285,45 @@ export default function AdminAppsPage() {
                     </div>
                   );
                 })}
+                {/* 回调地址：解析后逐行展示 */}
+                <div>
+                  <div className="text-xs text-gray-500 mb-1.5">回调地址</div>
+                  <div className="space-y-1.5">
+                    {function() {
+                      const uris = parseRedirectUris(detailApp.redirect_uris || '');
+                      if (uris.length === 0) {
+                        return <code className="font-mono text-sm text-gray-500 break-all bg-white/5 rounded-lg px-3 py-2 block">未设置</code>;
+                      }
+                      return uris.map(function(uri, i) {
+                        return (
+                          <div key={i} className="flex items-center gap-2">
+                            <code className="font-mono text-sm text-cyan-300 break-all bg-white/5 rounded-lg px-3 py-2 block flex-1">{uri}</code>
+                            <button className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all shrink-0" onClick={function() { copyToClipboard(uri); }}>
+                              <Copy size={13} className="text-gray-400" />
+                            </button>
+                          </div>
+                        );
+                      });
+                    }()}
+                  </div>
+                </div>
+                {/* 授权范围：解析后用中文标签展示 */}
+                <div>
+                  <div className="text-xs text-gray-500 mb-1.5">授权范围</div>
+                  <div className="flex flex-wrap gap-2">
+                    {function() {
+                      const scopes = parseScopes(detailApp.scopes || '');
+                      if (scopes.length === 0) {
+                        return <span className="text-xs text-gray-500">未设置</span>;
+                      }
+                      return scopes.map(function(s, i) {
+                        return (
+                          <span key={i} className="badge badge-cyan !text-[10px]">{scopeToLabel(s)}</span>
+                        );
+                      });
+                    }()}
+                  </div>
+                </div>
                 <div className="grid grid-cols-3 gap-3 pt-2">
                   <div className="glass-card !rounded-lg p-3"><div className="text-xs text-gray-500">最低等级</div><div className="text-sm font-bold">TL{detailApp.min_trust_level}</div></div>
                   <div className="glass-card !rounded-lg p-3"><div className="text-xs text-gray-500">手续费率</div><div className="text-sm font-bold">{detailApp.fee_rate}%</div></div>
