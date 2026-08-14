@@ -321,7 +321,20 @@ func (h *AdminHandler) GetApp(c *gin.Context) {
 		response.Error(c, errcode.ErrNotFound)
 		return
 	}
-	response.Success(c, app)
+	response.Success(c, gin.H{
+		"id":               app.ID,
+		"app_name":         app.AppName,
+		"app_description":  app.AppDescription,
+		"client_id":        app.ClientID,
+		"client_secret":    app.ClientSecret,
+		"redirect_uris":    app.RedirectURIs,
+		"scopes":           app.Scopes,
+		"min_trust_level":  app.MinTrustLevel,
+		"fee_rate":         app.FeeRate,
+		"bound_user_id":    app.BoundUserID,
+		"status":           app.Status,
+		"created_at":       app.CreatedAt,
+	})
 }
 func (h *AdminHandler) AdjustPoints(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
