@@ -1,5 +1,6 @@
 -- CampusHub 测试数据
 -- 创建 5 个非管理员用户，覆盖不同业务状态
+-- 注意：使用 SELECT 子查询引用 order_id，兼容已有数据场景
 
 -- ============================================================
 -- 1. 用户基础数据
@@ -52,11 +53,13 @@ ON CONFLICT (discourse_user_id) DO NOTHING;
 
 -- 订单: 赵六购买王五的商品
 INSERT INTO marketplace_orders (order_no, item_id, buyer_id, seller_id, quantity, unit_price, total_amount, fee, net_amount, status)
-VALUES ('TEST20260814001', 1, 1004, 1003, 1, 2000, 2000, 200, 1800, 'completed')
+SELECT 'TEST20260814001', id, 1004, seller_id, 1, price, price, price/10, price - price/10, 'completed'
+FROM marketplace_items WHERE title = '高等数学(上) 第八版' AND seller_id = 1003
 ON CONFLICT (order_no) DO NOTHING;
 
 INSERT INTO marketplace_orders (order_no, item_id, buyer_id, seller_id, quantity, unit_price, total_amount, fee, net_amount, status)
-VALUES ('TEST20260814002', 2, 1004, 1003, 2, 1500, 3000, 300, 2700, 'pending')
+SELECT 'TEST20260814002', id, 1004, seller_id, 2, price, price*2, price*2/10, price*2 - price*2/10, 'pending'
+FROM marketplace_items WHERE title = '考研英语词汇书' AND seller_id = 1003
 ON CONFLICT (order_no) DO NOTHING;
 
 -- 用户 1005: 孙七 - 买家，有争议订单
@@ -66,11 +69,14 @@ ON CONFLICT (discourse_user_id) DO NOTHING;
 
 -- 订单: 孙七购买，有争议
 INSERT INTO marketplace_orders (order_no, item_id, buyer_id, seller_id, quantity, unit_price, total_amount, fee, net_amount, status, dispute_status, pending_release_at)
-VALUES ('TEST20260814003', 3, 1005, 1003, 1, 800, 800, 80, 720, 'disputed', 'open', NOW() + INTERVAL '7 days')
+SELECT 'TEST20260814003', id, 1005, seller_id, 1, price, price, price/10, price - price/10, 'disputed', 'open', NOW() + INTERVAL '7 days'
+FROM marketplace_items WHERE title = '计算机组成原理笔记' AND seller_id = 1003
 ON CONFLICT (order_no) DO NOTHING;
 
-INSERT INTO disputes (order_id, buyer_id, seller_id, status, buyer_reason, buyer_images, created_at)
-VALUES (3, 1005, 1003, 'pending', '资料内容与描述不符，缺少关键章节', NULL, NOW())
+-- 争议记录（使用子查询引用 order_id，避免硬编码）
+INSERT INTO disputes (order_id, buyer_id, seller_id, status, buyer_reason, created_at)
+SELECT mo.id, 1005, 1003, 'pending', '资料内容与描述不符，缺少关键章节', NOW()
+FROM marketplace_orders mo WHERE mo.order_no = 'TEST20260814003'
 ON CONFLICT DO NOTHING;
 
 -- 应用数据
