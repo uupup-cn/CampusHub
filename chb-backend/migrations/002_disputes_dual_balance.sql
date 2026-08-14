@@ -1,4 +1,4 @@
-﻿-- CampusHub 争议退款 + 双积分体系迁移
+-- CampusHub 争议退款 + 双积分体系迁移
 -- 执行前请备份数据库
 
 -- 1. user_balances 增加未来积分字段
