@@ -310,3 +310,45 @@ func (h *AdminHandler) RecoverPoints(c *gin.Context) {
 	}
 	response.Success(c, nil)
 }
+func (h *AdminHandler) GetApp(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, errcode.ErrParamInvalid)
+		return
+	}
+	app, err := h.svc.GetAppByID(id)
+	if err != nil {
+		response.Error(c, errcode.ErrNotFound)
+		return
+	}
+	response.Success(c, app)
+}
+func (h *AdminHandler) AdjustPoints(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, errcode.ErrParamInvalid)
+		return
+	}
+	var req struct {
+		Amount    int64  `json:"amount"`
+		Direction string `json:"direction"`
+		Reason    string `json:"reason"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, errcode.ErrParamInvalid)
+		return
+	}
+	if req.Amount <= 0 || req.Reason == "" || (req.Direction != "add" && req.Direction != "deduct") {
+		response.Error(c, errcode.ErrParamMissing)
+		return
+	}
+	if err := h.svc.AdjustPoints(id, req.Amount, req.Direction, req.Reason, 1); err != nil {
+		if ec, ok := err.(errcode.ErrorCode); ok {
+			response.Error(c, ec)
+			return
+		}
+		response.Error(c, errcode.ErrInternal)
+		return
+	}
+	response.Success(c, nil)
+}

@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Store, LayoutDashboard, ShieldCheck, Sparkles,
   MessageSquare, LogIn, LogOut, Wallet, User, ChevronDown,
-  Package, ShoppingBag, PlusCircle, Settings, Clock,
+  Package, ShoppingBag, PlusCircle, Settings, Clock, Gavel, KeyRound,
 } from 'lucide-react';
 import { apiRequest, formatCHB } from '@/lib/api';
 
@@ -87,7 +87,10 @@ export default function Navbar() {
     ? [
         { href: '/admin', label: '仪表盘', icon: LayoutDashboard },
         { href: '/admin/marketplace', label: '集市审核', icon: Store },
+        { href: '/admin/disputes', label: '争议管理', icon: Gavel },
+        { href: '/admin/apps', label: '应用管理', icon: KeyRound },
         { href: '/admin/users', label: '用户管理', icon: ShieldCheck },
+        { href: '/admin/settings', label: '系统设置', icon: Settings },
       ]
     : isDashboard
     ? [

@@ -75,6 +75,14 @@ func (r *AppRepo) GetByClientID(clientID string) (*AppModel, error) {
 	}
 	return &app, nil
 }
+func (r *AppRepo) GetByID(id int64) (*AppModel, error) {
+	var app AppModel
+	err := r.db.Where("id = ?", id).First(&app).Error
+	if err != nil {
+		return nil, err
+	}
+	return &app, nil
+}
 
 func (r *AppRepo) List(page, pageSize int) ([]AppModel, int64, error) {
 	var list []AppModel

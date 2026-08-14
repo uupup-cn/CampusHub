@@ -114,9 +114,10 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			adminAPI.PUT("/reward/rules", admin.UpdateRewardRule)
 
 			adminAPI.GET("/apps", admin.ListApps)
-			adminAPI.POST("/apps", admin.CreateApp)
-			adminAPI.PUT("/apps/:id", admin.UpdateApp)
-			adminAPI.DELETE("/apps/:id", admin.DeleteApp)
+		adminAPI.POST("/apps", admin.CreateApp)
+		adminAPI.PUT("/apps/:id", admin.UpdateApp)
+		adminAPI.DELETE("/apps/:id", admin.DeleteApp)
+		adminAPI.GET("/apps/:id", admin.GetApp)
 
 			adminAPI.GET("/marketplace/applications", admin.ListApplications)
 			adminAPI.PUT("/marketplace/applications/:id", admin.ReviewApplication)
@@ -130,7 +131,8 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *gin.Engine {
 			adminAPI.GET("/users", admin.ListUsers)
 			adminAPI.PUT("/users/:id/freeze", admin.FreezeUser)
 			adminAPI.PUT("/users/:id/unfreeze", admin.UnfreezeUser)
-			adminAPI.POST("/users/:id/recover", admin.RecoverPoints)
+		adminAPI.POST("/users/:id/recover", admin.RecoverPoints)
+		adminAPI.POST("/users/:id/adjust", admin.AdjustPoints)
 
 			adminAPI.GET("/audit-logs", admin.ListAuditLogs)
 			adminAPI.GET("/stats", admin.GetStats)

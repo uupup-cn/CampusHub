@@ -375,3 +375,88 @@ func (s *AdminService) RecoverPoints(userID int64, amount int64, reason string, 
 		return nil
 	})
 }
+func (s *AdminService) GetAppByID(id int64) (*repository.AppModel, error) {
+	return s.appRepo.GetByID(id)
+}
+func (s *AdminService) AdjustPoints(userID int64, amount int64, direction string, reason string, operatorID int64) error {
+	if amount <= 0 || reason == "" {
+		return errcode.ErrParamInvalid
+	}
+	if direction != "add" && direction != "deduct" {
+		return errcode.ErrParamInvalid
+	}
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		ub, err := s.balanceRepo.GetByUserIDWithLock(tx, userID)
+		if err != nil {
+			return errcode.ErrNotFound
+		}
+		if direction == "deduct" {
+			if ub.Balance < amount {
+				return errcode.ErrBalanceInsufficient
+			}
+			newBalance := ub.Balance - amount
+			if err := s.balanceRepo.UpdateBalance(tx, userID, newBalance, ub.Version+1); err != nil {
+				return err
+			}
+			publicPool, err := s.poolRepo.GetPublicPoolWithLock(tx)
+			if err != nil {
+				return errcode.ErrDatabase
+			}
+			if err := s.poolRepo.UpdateBalanceTx(tx, publicPool.ID, publicPool.Balance+amount); err != nil {
+				return errcode.ErrDatabase
+			}
+		} else {
+			publicPool, err := s.poolRepo.GetPublicPoolWithLock(tx)
+			if err != nil {
+				return errcode.ErrDatabase
+			}
+			if publicPool.Balance < amount {
+				return errcode.ErrBalanceInsufficient
+			}
+			if err := s.poolRepo.UpdateBalanceTx(tx, publicPool.ID, publicPool.Balance-amount); err != nil {
+				return errcode.ErrDatabase
+			}
+			newBalance := ub.Balance + amount
+			newEarned := ub.TotalEarned + amount
+			if err := s.balanceRepo.UpdateBalanceAndEarned(tx, userID, newBalance, ub.Version+1, newEarned); err != nil {
+				return err
+			}
+		}
+		idemKey := "adjust_" + randomHex(16)
+		txType := "admin_adjust"
+		fromType := "pool"
+		toType := "user"
+		if direction == "deduct" {
+			fromType = "user"
+			toType = "pool"
+		}
+		adjAmount := amount
+		if direction == "deduct" {
+			adjAmount = -amount
+		}
+		ttx := &repository.Transaction{
+			TxType:          txType,
+			DiscourseUserID: userID,
+			Amount:          adjAmount,
+			NetAmount:       amount,
+			FromType:        fromType,
+			ToType:          toType,
+			IdempotencyKey:  idemKey,
+			Description:     &reason,
+			Status:          "completed",
+		}
+		if err := s.txRepo.Create(tx, ttx); err != nil {
+			return errcode.ErrDatabase
+		}
+		action := "points_add"
+		if direction == "deduct" {
+			action = "points_deduct"
+		}
+		detailJSON := fmt.Sprintf("{\"msg\": \"%s %d CHB: %s\"}", direction, amount, reason)
+		tx.Exec(
+			"INSERT INTO audit_logs (operator_id, action, target_type, target_id, detail, ip_address, created_at) VALUES (?, ?, ?, ?, ?::jsonb, ?, NOW())",
+			operatorID, action, "user", userID, detailJSON, "",
+		)
+		return nil
+	})
+}
